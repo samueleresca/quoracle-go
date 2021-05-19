@@ -10,7 +10,7 @@ type Node struct {
 type GenericExpr interface {
    Add(expr GenericExpr) GenericExpr
    Multiply(expr GenericExpr) GenericExpr
-   Quorum() map[GenericExpr]bool
+   Quorum() chan map[GenericExpr]bool
    IsQuorum(map[GenericExpr]bool) bool
    Nodes() map[Node]bool
    NumLeaves() int
@@ -34,41 +34,76 @@ func (lhs Expr) Multiply(rhs GenericExpr) GenericExpr {
 
 
 
-
 type Or struct {
    Es []GenericExpr
 }
 
-func (exp Or) NumLeaves() int {
+func (expr *Or) NumLeaves() int {
+    total := 0
+
+    for _, e := range expr.Es {
+        total += e.NumLeaves()
+    }
+
+    return total
+}
+
+func (expr *Or) DupFreeMinFailures() int {
+    total := 0
+
+    for _, e := range expr.Es {
+        total += e.DupFreeMinFailures()
+    }
+
+    return total
+}
+
+func (expr *Or) Add(e GenericExpr) GenericExpr {
     panic("implement me")
 }
 
-func (exp Or) DupFreeMinFailures() int {
+func (expr *Or) Multiply(e GenericExpr) GenericExpr {
     panic("implement me")
 }
 
-func (exp Or) Add(expr GenericExpr) GenericExpr {
-    panic("implement me")
+func (expr *Or) Quorum()  chan map[GenericExpr]bool {
+    chnl := make(chan map[GenericExpr]bool)
+    go func() {
+        for _, e := range expr.Es {
+            tmp := <- e.Quorum()
+            chnl <- tmp
+
+        }
+        // Ensure that at the end of the loop we close the channel!
+        close(chnl)
+    }()
+    return chnl
 }
 
-func (exp Or) Multiply(expr GenericExpr) GenericExpr {
-    panic("implement me")
+func (expr *Or) IsQuorum(xs map[GenericExpr]bool) bool {
+    var found = true
+    for  _, e := range expr.Es {
+        if !e.IsQuorum(xs) {
+            found = false
+            return found
+        }
+    }
+    return found
 }
 
-func (exp Or) Quorum() map[GenericExpr]bool {
-    panic("implement me")
+func (expr *Or) Nodes() map[Node]bool {
+    var final = make(map[Node]bool)
+
+    for _, e := range expr.Es {
+        for n := range e.Nodes() {
+            final[n] = true
+        }
+    }
+    return final
 }
 
-func (exp Or) IsQuorum(m map[GenericExpr]bool) bool {
-    panic("implement me")
-}
-
-func (exp Or) Nodes() map[Node]bool {
-    panic("implement me")
-}
-
-func (exp Or) String() string {
-   return fmt.Sprintf("%b", exp.Es)
+func (expr *Or) String() string {
+   return fmt.Sprintf("%b", expr.Es)
 }
 
 type And struct {
@@ -79,11 +114,12 @@ func (expr *And) String() string {
    return fmt.Sprintf("%b", expr.Es)
 }
 
-func (expr *And) Quorums() <- chan  map[GenericExpr]bool {
+func (expr *And) Quorums()  chan map[GenericExpr]bool {
    chnl := make(chan map[GenericExpr]bool)
    go func() {
       for _, e := range expr.Es {
-         chnl <- e.Quorum()
+          tmp := <- e.Quorum()
+          chnl <- tmp
       }
 
       // Ensure that at the end of the loop we close the channel!
@@ -116,7 +152,7 @@ func (expr *And) Nodes() map[Node]bool {
 }
 
 func (expr *And) Dual() GenericExpr {
-    return Or{expr.Es}
+    return &Or{expr.Es}
 }
 
 
@@ -132,7 +168,7 @@ func (expr *And) NumLeaves() int {
 
 func (expr *And) DupFreeMinFailures() int {
     var exprs = expr.Es
-    var min int = exprs[0].DupFreeMinFailures()
+    var min = exprs[0].DupFreeMinFailures()
 
     for _, expr := range exprs {
         if min > expr.DupFreeMinFailures() {
