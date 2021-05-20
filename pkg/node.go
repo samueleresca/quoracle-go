@@ -1,11 +1,92 @@
 package pkg
 
-import "fmt"
+import (
+    "fmt"
+    "time"
+)
 
 
 type Node struct {
-
+    Name string
+    ReadCapacity *float64
+    WriteCapacity *float64
+    Latency *time.Time
 }
+
+func DefNode(name string, capacity *float64, readCapacity *float64, writeCapacity *float64, latency *time.Time) Node {
+    node := Node{}
+    node.Name = name
+
+    if capacity == nil && readCapacity == nil && writeCapacity == nil {
+        initialValue := 1.0
+        node.ReadCapacity = &initialValue
+
+    }else if capacity != nil && readCapacity == nil && writeCapacity == nil{
+        node.ReadCapacity = capacity
+        node.WriteCapacity = capacity
+    }else if capacity == nil && readCapacity != nil && writeCapacity != nil {
+        node.ReadCapacity = readCapacity
+        node.WriteCapacity = writeCapacity
+    }else{
+        panic("You must specify capacity or (read_capacity 'and write_capacity)")
+    }
+
+    if latency == nil{
+        oneSec := time.Date(0,0,0,0,0,1,0, nil)
+        latency = &oneSec
+    }
+    return node
+}
+
+func (n *Node) String() string {
+    return n.Name
+}
+
+
+
+func (n *Node) Quorums() chan map[GenericExpr]bool {
+    chnl := make(chan map[GenericExpr]bool)
+
+    go func() {
+        chnl <- map[GenericExpr]bool{n : true}
+        // Ensure that at the end of the loop we close the channel!
+        close(chnl)
+    }()
+
+    return chnl
+}
+
+func (n *Node) IsQuorum(xs map[GenericExpr]bool) bool {
+    var found = false
+    for  k, _ := range xs {
+        if n.String() == k.String() {
+            found = true
+            return found
+        }
+    }
+    return found
+}
+
+
+func (n *Node) Nodes() map[Node]bool {
+   return map[Node]bool { *n : true }
+}
+
+func (n *Node) Dual() GenericExpr {
+   return n
+}
+
+
+func (n *Node) NumLeaves() int {
+    return 1
+}
+
+func (n *Node) DupFreeMinFailures() int {
+    return 1
+}
+
+
+
 
 type GenericExpr interface {
    Add(expr GenericExpr) GenericExpr
@@ -20,6 +101,7 @@ type GenericExpr interface {
 
 
 type Expr struct {
+    string Name
 
 
 }
@@ -114,7 +196,7 @@ func (expr *And) String() string {
    return fmt.Sprintf("%b", expr.Es)
 }
 
-func (expr *And) Quorums()  chan map[GenericExpr]bool {
+func (expr *And) Quorums() chan map[GenericExpr]bool {
    chnl := make(chan map[GenericExpr]bool)
    go func() {
       for _, e := range expr.Es {
