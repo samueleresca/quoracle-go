@@ -29,14 +29,25 @@ func (n *Node) Multiply(expr GenericExpr) And {
     return andExpr(n, expr)
 }
 
+func DefNode(name string) Node {
+    node := Node{}
+    node.Name = name
 
-func DefNode(name string, capacity *float64, readCapacity *float64, writeCapacity *float64, latency *time.Time) Node {
+    initialValue := 1.0
+    node.ReadCapacity = &initialValue
+    node.WriteCapacity = &initialValue
+
+    return node
+}
+
+func DefNodeWithCapacity(name string, capacity *float64, readCapacity *float64, writeCapacity *float64, latency *time.Time) Node {
     node := Node{}
     node.Name = name
 
     if capacity == nil && readCapacity == nil && writeCapacity == nil {
         initialValue := 1.0
         node.ReadCapacity = &initialValue
+        node.WriteCapacity = &initialValue
 
     }else if capacity != nil && readCapacity == nil && writeCapacity == nil{
         node.ReadCapacity = capacity
