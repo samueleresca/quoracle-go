@@ -13,6 +13,23 @@ type Node struct {
     Latency *time.Time
 }
 
+func (n *Node) GetEs() []GenericExpr {
+    return []GenericExpr {n}
+}
+
+func (n *Node) Expr() string {
+    return "Node"
+}
+
+func (n *Node) Add(expr GenericExpr) Or {
+    return orExpr(n, expr)
+}
+
+func (n *Node) Multiply(expr GenericExpr) And {
+    return andExpr(n, expr)
+}
+
+
 func DefNode(name string, capacity *float64, readCapacity *float64, writeCapacity *float64, latency *time.Time) Node {
     node := Node{}
     node.Name = name
@@ -76,7 +93,6 @@ func (n *Node) Dual() GenericExpr {
    return n
 }
 
-
 func (n *Node) NumLeaves() int {
     return 1
 }
@@ -85,25 +101,20 @@ func (n *Node) DupFreeMinFailures() int {
     return 1
 }
 
-
-
-
 type GenericExpr interface {
-   Add(expr GenericExpr) GenericExpr
-   Multiply(expr GenericExpr) GenericExpr
-   Quorum() chan map[GenericExpr]bool
+   Add(expr GenericExpr) Or
+   Multiply(expr GenericExpr) And
+   Quorums() chan map[GenericExpr]bool
    IsQuorum(map[GenericExpr]bool) bool
    Nodes() map[Node]bool
    NumLeaves() int
    DupFreeMinFailures() int
    String() string
+   Expr() string
+   GetEs() []GenericExpr
 }
 
-
 type Expr struct {
-    string Name
-
-
 }
 
 func (lhs Expr) Add(rhs GenericExpr) GenericExpr {
@@ -118,6 +129,14 @@ func (lhs Expr) Multiply(rhs GenericExpr) GenericExpr {
 
 type Or struct {
    Es []GenericExpr
+}
+
+func (expr *Or) GetEs() []GenericExpr {
+    return expr.Es
+}
+
+func (expr *Or) Expr() string {
+    return "Or"
 }
 
 func (expr *Or) NumLeaves() int {
@@ -140,19 +159,20 @@ func (expr *Or) DupFreeMinFailures() int {
     return total
 }
 
-func (expr *Or) Add(e GenericExpr) GenericExpr {
-    panic("implement me")
+func (expr *Or) Add(rhs GenericExpr) Or {
+    return expr.Add(rhs)
 }
 
-func (expr *Or) Multiply(e GenericExpr) GenericExpr {
-    panic("implement me")
+func (expr *Or) Multiply(rhs GenericExpr) And {
+    return expr.Multiply(rhs)
 }
 
-func (expr *Or) Quorum()  chan map[GenericExpr]bool {
+
+func (expr *Or) Quorums()  chan map[GenericExpr]bool {
     chnl := make(chan map[GenericExpr]bool)
     go func() {
         for _, e := range expr.Es {
-            tmp := <- e.Quorum()
+            tmp := <- e.Quorums()
             chnl <- tmp
 
         }
@@ -188,19 +208,38 @@ func (expr *Or) String() string {
    return fmt.Sprintf("%b", expr.Es)
 }
 
+
+
 type And struct {
    Es []GenericExpr
+}
+
+func (expr *And) GetEs() []GenericExpr {
+    return expr.Es
+}
+
+func (expr *And) Expr() string {
+    return "And"
 }
 
 func (expr *And) String() string {
    return fmt.Sprintf("%b", expr.Es)
 }
 
+func (expr *And) Add(rhs GenericExpr) Or {
+    return expr.Add(rhs)
+}
+
+func (expr *And) Multiply(rhs GenericExpr) And {
+    return expr.Multiply(rhs)
+}
+
+
 func (expr *And) Quorums() chan map[GenericExpr]bool {
    chnl := make(chan map[GenericExpr]bool)
    go func() {
       for _, e := range expr.Es {
-          tmp := <- e.Quorum()
+          tmp := <- e.Quorums()
           chnl <- tmp
       }
 
@@ -260,5 +299,31 @@ func (expr *And) DupFreeMinFailures() int {
     return min
 }
 
+
+
+
+func orExpr(lhs GenericExpr, rhs GenericExpr) Or {
+    if lhs.Expr() == "Or" && rhs.Expr() == "Or"{
+        return Or{append(lhs.GetEs(), rhs.GetEs()...)}
+    }else if lhs.Expr() == "Or" {
+        return Or{append(lhs.GetEs(), rhs)}
+    }else if rhs.Expr() == "Or" {
+        return Or{append(rhs.GetEs(), lhs)}
+    }else{
+        return Or{[]GenericExpr{rhs,lhs}}
+    }
+}
+
+func andExpr(lhs GenericExpr, rhs GenericExpr) And {
+    if lhs.Expr() == "And" && rhs.Expr() == "And"{
+        return And{append(lhs.GetEs(), rhs.GetEs()...)}
+    }else if lhs.Expr() == "And" {
+        return And{append(lhs.GetEs(), rhs)}
+    }else if rhs.Expr() == "And" {
+        return And{append(rhs.GetEs(), lhs)}
+    }else{
+        return And{[]GenericExpr{rhs,lhs}}
+    }
+}
 
 
