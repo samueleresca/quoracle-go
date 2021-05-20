@@ -1,7 +1,7 @@
 package pkg
 
 import (
-    "fmt"
+    "strings"
     "time"
 )
 
@@ -13,19 +13,19 @@ type Node struct {
     Latency *time.Time
 }
 
-func (n *Node) GetEs() []GenericExpr {
+func (n Node) GetEs() []GenericExpr {
     return []GenericExpr {n}
 }
 
-func (n *Node) Expr() string {
+func (n Node) Expr() string {
     return "Node"
 }
 
-func (n *Node) Add(expr GenericExpr) Or {
+func (n Node) Add(expr GenericExpr) Or {
     return orExpr(n, expr)
 }
 
-func (n *Node) Multiply(expr GenericExpr) And {
+func (n Node) Multiply(expr GenericExpr) And {
     return andExpr(n, expr)
 }
 
@@ -66,13 +66,13 @@ func DefNodeWithCapacity(name string, capacity *float64, readCapacity *float64, 
     return node
 }
 
-func (n *Node) String() string {
+func (n Node) String() string {
     return n.Name
 }
 
 
 
-func (n *Node) Quorums() chan map[GenericExpr]bool {
+func (n Node) Quorums() chan map[GenericExpr]bool {
     chnl := make(chan map[GenericExpr]bool)
 
     go func() {
@@ -84,7 +84,7 @@ func (n *Node) Quorums() chan map[GenericExpr]bool {
     return chnl
 }
 
-func (n *Node) IsQuorum(xs map[GenericExpr]bool) bool {
+func (n Node) IsQuorum(xs map[GenericExpr]bool) bool {
     var found = false
     for  k, _ := range xs {
         if n.String() == k.String() {
@@ -96,19 +96,19 @@ func (n *Node) IsQuorum(xs map[GenericExpr]bool) bool {
 }
 
 
-func (n *Node) Nodes() map[Node]bool {
-   return map[Node]bool { *n : true }
+func (n Node) Nodes() map[Node]bool {
+   return map[Node]bool { n : true }
 }
 
-func (n *Node) Dual() GenericExpr {
+func (n Node) Dual() GenericExpr {
    return n
 }
 
-func (n *Node) NumLeaves() int {
+func (n Node) NumLeaves() int {
     return 1
 }
 
-func (n *Node) DupFreeMinFailures() int {
+func (n Node) DupFreeMinFailures() int {
     return 1
 }
 
@@ -142,15 +142,15 @@ type Or struct {
    Es []GenericExpr
 }
 
-func (expr *Or) GetEs() []GenericExpr {
+func (expr Or) GetEs() []GenericExpr {
     return expr.Es
 }
 
-func (expr *Or) Expr() string {
+func (expr Or) Expr() string {
     return "Or"
 }
 
-func (expr *Or) NumLeaves() int {
+func (expr Or) NumLeaves() int {
     total := 0
 
     for _, e := range expr.Es {
@@ -160,7 +160,7 @@ func (expr *Or) NumLeaves() int {
     return total
 }
 
-func (expr *Or) DupFreeMinFailures() int {
+func (expr Or) DupFreeMinFailures() int {
     total := 0
 
     for _, e := range expr.Es {
@@ -170,16 +170,16 @@ func (expr *Or) DupFreeMinFailures() int {
     return total
 }
 
-func (expr *Or) Add(rhs GenericExpr) Or {
-    return expr.Add(rhs)
+func (expr Or) Add(rhs GenericExpr) Or {
+    return orExpr(expr, rhs)
 }
 
-func (expr *Or) Multiply(rhs GenericExpr) And {
-    return expr.Multiply(rhs)
+func (expr Or) Multiply(rhs GenericExpr) And {
+    return andExpr(expr, rhs)
 }
 
 
-func (expr *Or) Quorums()  chan map[GenericExpr]bool {
+func (expr Or) Quorums()  chan map[GenericExpr]bool {
     chnl := make(chan map[GenericExpr]bool)
     go func() {
         for _, e := range expr.Es {
@@ -193,7 +193,7 @@ func (expr *Or) Quorums()  chan map[GenericExpr]bool {
     return chnl
 }
 
-func (expr *Or) IsQuorum(xs map[GenericExpr]bool) bool {
+func (expr Or) IsQuorum(xs map[GenericExpr]bool) bool {
     var found = true
     for  _, e := range expr.Es {
         if !e.IsQuorum(xs) {
@@ -204,7 +204,7 @@ func (expr *Or) IsQuorum(xs map[GenericExpr]bool) bool {
     return found
 }
 
-func (expr *Or) Nodes() map[Node]bool {
+func (expr Or) Nodes() map[Node]bool {
     var final = make(map[Node]bool)
 
     for _, e := range expr.Es {
@@ -215,8 +215,23 @@ func (expr *Or) Nodes() map[Node]bool {
     return final
 }
 
-func (expr *Or) String() string {
-   return fmt.Sprintf("%b", expr.Es)
+func (expr Or) String() string {
+
+    if len(expr.Es) == 0 {
+        return "()"
+    }
+    var sb strings.Builder
+
+    sb.WriteString("(")
+    sb.WriteString(expr.Es[0].String())
+
+    for _, v := range expr.Es[1:] {
+        sb.WriteString(" + ")
+        sb.WriteString(v.String())
+    }
+
+    sb.WriteString(")")
+    return sb.String()
 }
 
 
@@ -225,28 +240,43 @@ type And struct {
    Es []GenericExpr
 }
 
-func (expr *And) GetEs() []GenericExpr {
+func (expr And) GetEs() []GenericExpr {
     return expr.Es
 }
 
-func (expr *And) Expr() string {
+func (expr And) Expr() string {
     return "And"
 }
 
-func (expr *And) String() string {
-   return fmt.Sprintf("%b", expr.Es)
+func (expr And) String() string {
+    if len(expr.Es) == 0 {
+        return "()"
+    }
+    var sb strings.Builder
+
+    sb.WriteString("(")
+    sb.WriteString(expr.Es[0].String())
+
+    for _, v := range expr.Es[1:] {
+        sb.WriteString(" * ")
+        sb.WriteString(v.String())
+    }
+
+    sb.WriteString(")")
+
+    return sb.String()
 }
 
-func (expr *And) Add(rhs GenericExpr) Or {
-    return expr.Add(rhs)
+func (expr And) Add(rhs GenericExpr) Or {
+    return orExpr(expr, rhs)
 }
 
-func (expr *And) Multiply(rhs GenericExpr) And {
-    return expr.Multiply(rhs)
+func (expr And) Multiply(rhs GenericExpr) And {
+    return andExpr(expr, rhs)
 }
 
 
-func (expr *And) Quorums() chan map[GenericExpr]bool {
+func (expr And) Quorums() chan map[GenericExpr]bool {
    chnl := make(chan map[GenericExpr]bool)
    go func() {
       for _, e := range expr.Es {
@@ -260,7 +290,7 @@ func (expr *And) Quorums() chan map[GenericExpr]bool {
    return chnl
 }
 
-func (expr *And) IsQuorum(xs map[GenericExpr]bool) bool {
+func (expr And) IsQuorum(xs map[GenericExpr]bool) bool {
  var found = false
  for  _, e := range expr.Es {
      if e.IsQuorum(xs) {
@@ -272,7 +302,7 @@ func (expr *And) IsQuorum(xs map[GenericExpr]bool) bool {
 }
 
 
-func (expr *And) Nodes() map[Node]bool {
+func (expr And) Nodes() map[Node]bool {
     var final = make(map[Node]bool)
 
     for _, e := range expr.Es {
@@ -283,12 +313,12 @@ func (expr *And) Nodes() map[Node]bool {
     return final
 }
 
-func (expr *And) Dual() GenericExpr {
+func (expr And) Dual() GenericExpr {
     return &Or{expr.Es}
 }
 
 
-func (expr *And) NumLeaves() int {
+func (expr And) NumLeaves() int {
     total := 0
 
     for _, e := range expr.Es {
@@ -298,7 +328,7 @@ func (expr *And) NumLeaves() int {
     return total
 }
 
-func (expr *And) DupFreeMinFailures() int {
+func (expr And) DupFreeMinFailures() int {
     var exprs = expr.Es
     var min = exprs[0].DupFreeMinFailures()
 
@@ -319,9 +349,9 @@ func orExpr(lhs GenericExpr, rhs GenericExpr) Or {
     }else if lhs.Expr() == "Or" {
         return Or{append(lhs.GetEs(), rhs)}
     }else if rhs.Expr() == "Or" {
-        return Or{append(rhs.GetEs(), lhs)}
+        return Or{append([]GenericExpr{lhs}, rhs.GetEs()...)}
     }else{
-        return Or{[]GenericExpr{rhs,lhs}}
+        return Or{[]GenericExpr{lhs, rhs}}
     }
 }
 
@@ -331,9 +361,9 @@ func andExpr(lhs GenericExpr, rhs GenericExpr) And {
     }else if lhs.Expr() == "And" {
         return And{append(lhs.GetEs(), rhs)}
     }else if rhs.Expr() == "And" {
-        return And{append(rhs.GetEs(), lhs)}
+        return And{append([]GenericExpr{lhs}, rhs.GetEs()...)}
     }else{
-        return And{[]GenericExpr{rhs,lhs}}
+        return And{[]GenericExpr{lhs,rhs}}
     }
 }
 
