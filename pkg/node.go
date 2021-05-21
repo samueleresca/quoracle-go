@@ -278,11 +278,21 @@ func (expr And) Multiply(rhs GenericExpr) And {
 
 func (expr And) Quorums() chan map[GenericExpr]bool {
    chnl := make(chan map[GenericExpr]bool)
+   flatQuorums := make([][]GenericExpr, 0)
+
+   for _, e := range expr.Es {
+       tmp := make(map[GenericExpr]bool, 0)
+
+       for q := range e.Quorums(){
+           tmp = mergeGenericExprSets(tmp, q)
+       }
+       flatQuorums = append(flatQuorums, exprMapToList(tmp))
+   }
+
    go func() {
-      for _, e := range expr.Es {
-          tmp := <- e.Quorums()
-          chnl <- tmp
-      }
+        for _, sets := range product(flatQuorums...){
+            chnl <- exprListToMap(sets)
+        }
 
       // Ensure that at the end of the loop we close the channel!
       close(chnl)
@@ -368,3 +378,56 @@ func andExpr(lhs GenericExpr, rhs GenericExpr) And {
 }
 
 
+func mergeGenericExprSets(maps ...map[GenericExpr]bool) map[GenericExpr]bool {
+    result := make(map[GenericExpr]bool)
+    for _, m := range maps {
+        for k, v := range m {
+            result[k] = v
+        }
+    }
+    return result
+}
+// Cartesian product of lists, see: https://www.programmersought.com/article/95476401483/
+func product(sets ...[]GenericExpr) [][]GenericExpr {
+    lens := func(i int) int { return len(sets[i]) }
+    product := [][]GenericExpr{}
+    for ix := make([]int, len(sets)); ix[0] < lens(0); nextIndex(ix, lens) {
+        var r []GenericExpr
+
+        for j, k := range ix {
+            r = append(r, sets[j][k])
+        }
+        product = append(product, r)
+    }
+    return product
+}
+
+func nextIndex(ix []int, lens func(i int) int) {
+    for j := len(ix) - 1; j >= 0; j-- {
+        ix[j]++
+        if j == 0 || ix[j] < lens(j) {
+            return
+        }
+        ix[j] = 0
+    }
+}
+
+func exprMapToList(input map[GenericExpr]bool) []GenericExpr{
+    result:= make([]GenericExpr, 0)
+
+    for k,_ := range input{
+        result = append(result, k)
+    }
+
+    return result
+}
+
+func exprListToMap(input []GenericExpr) map[GenericExpr]bool{
+    result:= make(map[GenericExpr]bool)
+
+    for _,k := range input {
+        result[k] = true
+    }
+
+    return result
+}
