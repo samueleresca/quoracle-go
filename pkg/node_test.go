@@ -4,19 +4,7 @@ import (
 	"gotest.tools/assert"
 	"testing"
 )
-func assertQuorums(t *testing.T, e GenericExpr, xs []map[string]bool ){
-	nodes := make([]map[string]bool,0)
 
-	for q:= range e.Quorums(){
-		tmp := make(map[string]bool)
-
-		for n:= range q {
-			tmp[n.String()] = true
-		}
-		nodes = append(nodes,tmp)
-	}
-	assert.DeepEqual(t, nodes, xs)
-}
 func TestNode(t *testing.T ){
 	a, b, c := DefNode("a"), DefNode("b"), DefNode("c")
 	assert.Assert(t, a.String() == "a")
@@ -25,6 +13,20 @@ func TestNode(t *testing.T ){
 }
 
 func TestQuorums(t *testing.T){
+	assertQuorums := func(t *testing.T, e GenericExpr, xs []map[string]bool ){
+		nodes := make([]map[string]bool,0)
+
+		for q:= range e.Quorums(){
+			tmp := make(map[string]bool)
+
+			for n:= range q {
+				tmp[n.String()] = true
+			}
+			nodes = append(nodes,tmp)
+		}
+		assert.DeepEqual(t, nodes, xs)
+	}
+
 	a, b, c := DefNode("a"), DefNode("b"), DefNode("c")
 	assert.Assert(t, a.Add(b).Add(c).String() == "(a + b + c)" )
 	assert.Assert(t, a.Multiply(b).Multiply(c).String() == "(a * b * c)" )
