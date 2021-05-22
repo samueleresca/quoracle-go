@@ -34,7 +34,8 @@ func TestQuorums(t *testing.T){
 	assertQuorums(t, a.Add(b).Add(c) , []map[string]bool{{"a": true },{"b": true},{ "c": true}})
 
 	assertQuorums(t, a.Add(b.Multiply(c)) , []map[string]bool{{"a": true },{"b": true, "c": true}})
-	//assertQuorums(t, a.Add(a).Add(a) , []map[string]bool{{"a": true }})
-	//assertQuorums(t, a.Multiply(a).Multiply(a) , []map[string]bool{{"a": true }})
+	assertQuorums(t, a.Multiply(a).Multiply(a) , []map[string]bool{{"a": true }})
 	assertQuorums(t, a.Multiply(a.Add(b)) , []map[string]bool{{"a": true },{"a": true, "b": true,}})
+	assertQuorums(t, a.Multiply(a.Add(b)), []map[string]bool{{"a": true },{"a": true, "b": true,}} )
+	assertQuorums(t, a.Add(b).Multiply(a.Add(c)), []map[string]bool{{"a": true },{"a": true, "c": true,},{"a": true, "b": true,},{"b": true, "c": true,}})
 }
