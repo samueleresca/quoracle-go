@@ -45,7 +45,7 @@ func TestQuorums(t *testing.T){
 
 func TestIsQuorum(t *testing.T){
 
-	a, b, c := DefNode("a"), DefNode("b"), DefNode("c")
+	a, b, c, d := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d")
 
 	assertQuorum := func(expr GenericExpr, q map[GenericExpr]bool){
 		assert.Assert(t, expr.IsQuorum(q) == true)
@@ -66,7 +66,6 @@ func TestIsQuorum(t *testing.T){
 	assertNonQuorum(expr,  map[GenericExpr]bool{Node{Name: "x"}: true})
 
 	exprAnd := a.Multiply(b).Multiply(c)
-
 	assertQuorum(exprAnd, map[GenericExpr]bool{Node{ Name: "a"}: true, Node{ Name: "b"}: true, Node{ Name: "c"}: true})
 	assertQuorum(exprAnd,  map[GenericExpr]bool{Node{ Name: "a"}: true, Node{ Name: "b"}: true, Node{ Name: "c"}: true, Node{ Name: "x"}: true})
 	assertNonQuorum(exprAnd, map[GenericExpr]bool{})
@@ -78,4 +77,28 @@ func TestIsQuorum(t *testing.T){
 	assertNonQuorum(exprAnd,  map[GenericExpr]bool{Node{Name: "b"}: true, Node{Name: "c"}: true})
 	assertNonQuorum(exprAnd, map[GenericExpr]bool{Node{Name: "x"}: true})
 	assertNonQuorum(exprAnd,  map[GenericExpr]bool{Node{Name: "a"}: true, Node{Name: "x"}: true})
+
+	exprp := a.Add(b).Multiply(c.Add(d))
+	assertQuorum(exprp, map[GenericExpr]bool{Node{ Name: "a"}: true, Node{ Name: "c"}: true})
+	assertQuorum(exprp,  map[GenericExpr]bool{Node{ Name: "a"}: true, Node{ Name: "c"}: true})
+	assertQuorum(exprp, map[GenericExpr]bool{Node{ Name: "a"}: true, Node{ Name: "d"}: true})
+	assertQuorum(exprp, map[GenericExpr]bool{Node{ Name: "b"}: true, Node{ Name: "d"}: true})
+	assertQuorum(exprp,  map[GenericExpr]bool{Node{ Name: "a"}: true, Node{ Name: "b"}: true, Node{ Name: "d"}: true})
+	assertQuorum(exprp,  map[GenericExpr]bool{Node{ Name: "b"}: true, Node{ Name: "c"}: true, Node{ Name: "d"}: true})
+	assertQuorum(exprp,  map[GenericExpr]bool{Node{ Name: "b"}: true, Node{ Name: "c"}: true, Node{ Name: "d"}: true})
+	assertQuorum(exprp,  map[GenericExpr]bool{Node{ Name: "a"}: true, Node{ Name: "b"}: true, Node{ Name: "d"}: true})
+	assertQuorum(exprp,  map[GenericExpr]bool{Node{ Name: "a"}: true, Node{ Name: "c"}: true, Node{ Name: "d"}: true})
+	assertQuorum(exprp,  map[GenericExpr]bool{Node{ Name: "a"}: true, Node{ Name: "b"}: true, Node{ Name: "c"}: true, Node{ Name: "d"}: true})
+	assertNonQuorum(exprp, map[GenericExpr]bool{Node{ Name: "a"}: true})
+	assertNonQuorum(exprp,  map[GenericExpr]bool{Node{Name: "b"}: true})
+	assertNonQuorum(exprp, map[GenericExpr]bool{Node{Name: "c"}: true})
+	assertNonQuorum(exprp, map[GenericExpr]bool{Node{Name: "d"}: true})
+	assertNonQuorum(exprp,  map[GenericExpr]bool{Node{Name: "a"}: true, Node{Name: "b"}: true})
+	assertNonQuorum(exprp,  map[GenericExpr]bool{Node{Name: "c"}: true, Node{Name: "d"}: true})
+	assertNonQuorum(exprp, map[GenericExpr]bool{Node{Name: "x"}: true})
+}
+
+
+func TestResilience(t *testing.T){
+
 }

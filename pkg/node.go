@@ -86,7 +86,7 @@ func (n Node) Quorums() chan map[GenericExpr]bool {
 
 func (n Node) IsQuorum(xs map[GenericExpr]bool) bool {
     var found = false
-    for  k, _ := range xs {
+    for  k := range xs {
         if n.String() == k.String() {
             found = true
             return found
