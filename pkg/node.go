@@ -194,10 +194,10 @@ func (expr Or) Quorums()  chan map[GenericExpr]bool {
 }
 
 func (expr Or) IsQuorum(xs map[GenericExpr]bool) bool {
-    var found = true
+    var found = false
     for  _, e := range expr.Es {
-        if !e.IsQuorum(xs) {
-            found = false
+        if e.IsQuorum(xs) {
+            found = true
             return found
         }
     }
@@ -213,6 +213,7 @@ func (expr Or) Nodes() map[Node]bool {
         }
     }
     return final
+
 }
 
 func (expr Or) String() string {
@@ -301,14 +302,14 @@ func (expr And) Quorums() chan map[GenericExpr]bool {
 }
 
 func (expr And) IsQuorum(xs map[GenericExpr]bool) bool {
- var found = false
- for  _, e := range expr.Es {
-     if e.IsQuorum(xs) {
-        found = true
-        return found
-     }
-   }
-   return found
+    var found = true
+    for  _, e := range expr.Es {
+        if !e.IsQuorum(xs) {
+            found = false
+            return found
+        }
+    }
+    return found
 }
 
 

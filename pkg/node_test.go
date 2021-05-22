@@ -41,3 +41,27 @@ func TestQuorums(t *testing.T){
 	assertQuorums(t, a.Multiply(a.Add(b)), []map[string]bool{{"a": true },{"a": true, "b": true,}} )
 	assertQuorums(t, a.Add(b).Multiply(a.Add(c)), []map[string]bool{{"a": true },{"a": true, "c": true,},{"a": true, "b": true,},{"b": true, "c": true,}})
 }
+
+
+func TestIsQuorum(t *testing.T){
+
+	a, b, c := DefNode("a"), DefNode("b"), DefNode("c")
+
+	assertQuorum := func(expr GenericExpr, q map[GenericExpr]bool){
+		assert.Assert(t, expr.IsQuorum(q) == true)
+	}
+
+	assertNonQuorum := func(expr GenericExpr, q map[GenericExpr]bool){
+		assert.Assert(t, expr.IsQuorum(q) == false)
+	}
+
+	expr := a.Add(b).Add(c)
+	assertQuorum(expr, map[GenericExpr]bool{Node{ Name: "a"}: true})
+	assertQuorum(expr,  map[GenericExpr]bool{Node{Name: "b"}: true})
+	assertQuorum(expr, map[GenericExpr]bool{Node{Name: "c"}: true})
+	assertQuorum(expr,  map[GenericExpr]bool{Node{Name: "a"}: true, Node{Name: "b"}: true})
+	assertQuorum(expr, map[GenericExpr]bool{Node{Name: "a"}: true, Node{Name: "c"}: true})
+	assertQuorum(expr,  map[GenericExpr]bool{Node{Name: "b"}: true, Node{Name: "c"}: true})
+	assertNonQuorum(expr, map[GenericExpr]bool{})
+	assertNonQuorum(expr,  map[GenericExpr]bool{Node{Name: "x"}: true})
+}
