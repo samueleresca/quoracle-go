@@ -1,6 +1,9 @@
 package pkg
 
 import (
+    "fmt"
+    "github.com/lanl/clp"
+    "math"
     "strings"
     "time"
 )
@@ -29,6 +32,13 @@ func (n Node) Multiply(expr GenericExpr) And {
     return andExpr(n, expr)
 }
 
+func (n Node) Resilience() int{
+    if n.DupFree(){
+        return n.DupFreeMinFailures() - 1
+    }
+    return 0
+}
+
 func DefNode(name string) Node {
     node := Node{}
     node.Name = name
@@ -39,6 +49,7 @@ func DefNode(name string) Node {
 
     return node
 }
+
 
 func DefNodeWithCapacity(name string, capacity *float64, readCapacity *float64, writeCapacity *float64, latency *time.Time) Node {
     node := Node{}
@@ -112,6 +123,10 @@ func (n Node) DupFreeMinFailures() int {
     return 1
 }
 
+func (n Node) DupFree() bool {
+    return len(n.Nodes()) == n.NumLeaves()
+}
+
 type GenericExpr interface {
    Add(expr GenericExpr) Or
    Multiply(expr GenericExpr) And
@@ -120,6 +135,8 @@ type GenericExpr interface {
    Nodes() map[Node]bool
    NumLeaves() int
    DupFreeMinFailures() int
+   Resilience() int
+   DupFree() bool
    String() string
    Expr() string
    GetEs() []GenericExpr
@@ -145,6 +162,7 @@ type Or struct {
 func (expr Or) GetEs() []GenericExpr {
     return expr.Es
 }
+
 
 func (expr Or) Expr() string {
     return "Or"
@@ -193,6 +211,14 @@ func (expr Or) Quorums()  chan map[GenericExpr]bool {
     return chnl
 }
 
+func (expr Or) Resilience() int{
+    if expr.DupFree(){
+        return expr.DupFreeMinFailures() - 1
+    }
+    return 0
+}
+
+
 func (expr Or) IsQuorum(xs map[GenericExpr]bool) bool {
     var found = false
     for  _, e := range expr.Es {
@@ -213,8 +239,8 @@ func (expr Or) Nodes() map[Node]bool {
         }
     }
     return final
-
 }
+
 
 func (expr Or) String() string {
 
@@ -248,7 +274,9 @@ func (expr And) GetEs() []GenericExpr {
 func (expr And) Expr() string {
     return "And"
 }
-
+func (expr And) DupFree() bool {
+    return len(expr.Nodes()) == expr.NumLeaves()
+}
 func (expr And) String() string {
     if len(expr.Es) == 0 {
         return "()"
@@ -276,6 +304,9 @@ func (expr And) Multiply(rhs GenericExpr) And {
     return andExpr(expr, rhs)
 }
 
+func (expr Or) DupFree() bool {
+    return len(expr.Nodes()) == expr.NumLeaves()
+}
 
 func (expr And) Quorums() chan map[GenericExpr]bool {
    chnl := make(chan map[GenericExpr]bool)
@@ -301,6 +332,12 @@ func (expr And) Quorums() chan map[GenericExpr]bool {
    return chnl
 }
 
+func (expr And) Resilience() int{
+    if expr.DupFree(){
+        return expr.DupFreeMinFailures() - 1
+    }
+    return 0
+}
 func (expr And) IsQuorum(xs map[GenericExpr]bool) bool {
     var found = true
     for  _, e := range expr.Es {
@@ -431,4 +468,49 @@ func exprListToMap(input []GenericExpr) map[GenericExpr]bool{
     }
 
     return result
+}
+
+
+func minHittingSet(sets []map[GenericExpr]bool) int {
+
+    x := make([]float64, 0)
+    constraints := make([][2]float64, 0)
+    obj := make([][]float64, 0)
+    pinf := math.Inf(1)
+    simp := clp.NewSimplex()
+
+    for _, xs := range sets {
+        for range xs {
+            x = append(x, 1.0)
+        }
+
+        for range x {
+            tmp := [][2]float64{{0, 1}}
+            constraints = append(constraints, tmp...)
+        }
+
+        tmp := make([]float64, 0)
+        tmp = append(tmp, 1)
+        for range xs {
+            tmp = append(tmp, 1)
+        }
+        tmp = append(tmp, pinf)
+        obj = append(obj, tmp)
+    }
+
+    // Set up the optimization problem.
+
+    simp.EasyLoadDenseProblem(
+        x,
+        constraints,
+        obj)
+
+    simp.SetOptimizationDirection(clp.Minimize)
+
+    // Solve the optimization problem.
+    simp.Primal(clp.NoValuesPass, clp.NoStartFinishOptions)
+    soln := simp.PrimalColumnSolution()
+    fmt.Println(soln)
+
+    return 0
 }

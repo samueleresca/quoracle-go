@@ -100,5 +100,7 @@ func TestIsQuorum(t *testing.T){
 
 
 func TestResilience(t *testing.T){
-
+	assertResilience := func(expr GenericExpr, q map[GenericExpr]bool){
+		assert.Assert(t, expr.Re(q) == true)
+	}
 }
