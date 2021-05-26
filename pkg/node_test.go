@@ -139,3 +139,25 @@ func TestDual(t *testing.T){
 	assertDual((a.Add(a)).Multiply(a.Add(a)),  (a.Multiply(a)).Add(a.Multiply(a)))
 	assertDual((a.Add(a.Multiply(b))).Add((c.Multiply(d)).Add(a)), (a.Multiply(a.Add(b))).Multiply((c.Add(d)).Multiply(a)))
 }
+
+func TestDupFree(t *testing.T){
+	assertDupFree := func(expr GenericExpr){
+		assert.Assert(t, expr.DupFree() == true)
+	}
+
+	assertNonDupFree := func(expr GenericExpr){
+		assert.Assert(t, expr.DupFree() == false)
+	}
+
+	a, b, c, d, e := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e")
+
+	assertDupFree(a)
+	assertDupFree(a.Add(b))
+	assertDupFree(a.Multiply(b))
+	assertDupFree(a.Multiply(b).Add(c))
+	assertDupFree((a.Add(b)).Multiply(c.Add(d.Multiply(e))))
+	assertNonDupFree(a.Add(a))
+	assertNonDupFree(a.Multiply(a))
+	assertNonDupFree(a.Multiply(b.Add(a)))
+	assertNonDupFree((a.Add(b)).Multiply(c.Add(d.Multiply(a))))
+}
