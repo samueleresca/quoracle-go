@@ -122,3 +122,20 @@ func TestResilience(t *testing.T){
 	assertResilience((a.Multiply(b)).Add(b.Multiply(c)).Add(a.Multiply(d)).Add(a.Multiply(d).Multiply(e)), 1)
 
 }
+
+func TestDual(t *testing.T){
+	assertDual := func(x GenericExpr, y GenericExpr ){
+		assert.DeepEqual(t, x.Dual(), y)
+	}
+
+	a, b, c, d := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d")
+
+	assertDual(a, a)
+	assertDual(a.Add(b), a.Multiply(b))
+	assertDual(a.Add(a), a.Multiply(a))
+	assertDual((a.Add(b)).Multiply(c.Add(d)), (a.Multiply(b)).Add(c.Multiply(d)))
+	assertDual((a.Add(b)).Multiply(a.Add(d)), (a.Multiply(b)).Add(a.Multiply(d)))
+	assertDual((a.Add(b)).Multiply(a.Add(a)), (a.Multiply(b)).Add(a.Multiply(a)))
+	assertDual((a.Add(a)).Multiply(a.Add(a)),  (a.Multiply(a)).Add(a.Multiply(a)))
+	assertDual((a.Add(a.Multiply(b))).Add((c.Multiply(d)).Add(a)), (a.Multiply(a.Add(b))).Multiply((c.Add(d)).Multiply(a)))
+}

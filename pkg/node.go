@@ -147,6 +147,7 @@ type GenericExpr interface {
    String() string
    Expr() string
    GetEs() []GenericExpr
+   Dual() GenericExpr
 }
 
 type Expr struct {
@@ -203,7 +204,13 @@ func (expr Or) Multiply(rhs GenericExpr) And {
     return andExpr(expr, rhs)
 }
 
-
+func (expr Or) Dual() GenericExpr{
+    dualExprs := make([]GenericExpr, 0)
+    for _, e := range expr.Es {
+        dualExprs = append(dualExprs, e.Dual())
+    }
+    return And{ Es: dualExprs }
+}
 func (expr Or) Quorums()  chan map[GenericExpr]bool {
     chnl := make(chan map[GenericExpr]bool)
     go func() {
@@ -290,6 +297,15 @@ func (expr And) Expr() string {
 }
 func (expr And) DupFree() bool {
     return len(expr.Nodes()) == expr.NumLeaves()
+}
+
+
+func (expr And) Dual() GenericExpr{
+    dualExprs := make([]GenericExpr, 0)
+    for _, e := range expr.Es {
+        dualExprs = append(dualExprs, e.Dual())
+    }
+    return Or{ Es: dualExprs }
 }
 func (expr And) String() string {
     if len(expr.Es) == 0 {
@@ -382,9 +398,6 @@ func (expr And) Nodes() map[Node]bool {
     return final
 }
 
-func (expr And) Dual() GenericExpr {
-    return &Or{expr.Es}
-}
 
 
 func (expr And) NumLeaves() int {
