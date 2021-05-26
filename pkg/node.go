@@ -36,7 +36,14 @@ func (n Node) Resilience() int{
     if n.DupFree(){
         return n.DupFreeMinFailures() - 1
     }
-    return 0
+
+    qs := make([]map[GenericExpr]bool, 0)
+
+    for q := range n.Quorums(){
+        qs = append(qs, q)
+    }
+
+    return minHittingSet(qs) - 1
 }
 
 func DefNode(name string) Node {
@@ -215,7 +222,14 @@ func (expr Or) Resilience() int{
     if expr.DupFree(){
         return expr.DupFreeMinFailures() - 1
     }
-    return 0
+
+    qs := make([]map[GenericExpr]bool, 0)
+
+    for q := range expr.Quorums(){
+        qs = append(qs, q)
+    }
+
+    return minHittingSet(qs) - 1
 }
 
 
@@ -336,7 +350,14 @@ func (expr And) Resilience() int{
     if expr.DupFree(){
         return expr.DupFreeMinFailures() - 1
     }
-    return 0
+
+    qs := make([]map[GenericExpr]bool, 0)
+
+    for q := range expr.Quorums(){
+       qs = append(qs, q)
+    }
+
+    return minHittingSet(qs) - 1
 }
 func (expr And) IsQuorum(xs map[GenericExpr]bool) bool {
     var found = true
@@ -473,6 +494,7 @@ func exprListToMap(input []GenericExpr) map[GenericExpr]bool{
 
 func minHittingSet(sets []map[GenericExpr]bool) int {
 
+    xVars := make(map[GenericExpr]float64)
     x := make([]float64, 0)
     constraints := make([][2]float64, 0)
     obj := make([][]float64, 0)
@@ -480,19 +502,30 @@ func minHittingSet(sets []map[GenericExpr]bool) int {
     simp := clp.NewSimplex()
 
     for _, xs := range sets {
-        for range xs {
-            x = append(x, 1.0)
+        for k := range xs {
+            xVars[k] = 1.0
         }
+    }
 
-        for range x {
-            tmp := [][2]float64{{0, 1}}
-            constraints = append(constraints, tmp...)
-        }
+    for range xVars {
+        x = append(x, 1.0)
+    }
 
+    for range xVars {
+        tmp := [][2]float64{{0, 1}}
+        constraints = append(constraints, tmp...)
+    }
+
+    for _, xs := range sets {
         tmp := make([]float64, 0)
         tmp = append(tmp, 1)
-        for range xs {
-            tmp = append(tmp, 1)
+
+        for k, _ := range xVars {
+            if _, ok := xs[k]; ok {
+                tmp = append(tmp, 1)
+            }else{
+                tmp = append(tmp, 0)
+            }
         }
         tmp = append(tmp, pinf)
         obj = append(obj, tmp)
@@ -512,5 +545,9 @@ func minHittingSet(sets []map[GenericExpr]bool) int {
     soln := simp.PrimalColumnSolution()
     fmt.Println(soln)
 
-    return 0
+    result := 0.0
+    for _, v := range soln {
+        result += v
+    }
+    return int(math.Round(result))
 }

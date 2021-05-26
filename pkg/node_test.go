@@ -100,7 +100,25 @@ func TestIsQuorum(t *testing.T){
 
 
 func TestResilience(t *testing.T){
-	assertResilience := func(expr GenericExpr, q map[GenericExpr]bool){
-		assert.Assert(t, expr.Re(q) == true)
+	assertResilience := func(expr GenericExpr, n int){
+		assert.Assert(t, expr.Resilience() == n)
 	}
+
+	a, b, c, d, e, f := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e"), DefNode("f")
+
+	assertResilience(a, 0)
+	assertResilience(a.Add(b), 1)
+	assertResilience(a.Add(b).Add(c), 2)
+	assertResilience(a.Add(b).Add(c).Add(d), 3)
+	assertResilience(a, 0)
+	assertResilience(a.Multiply(b), 0)
+	assertResilience(a.Multiply(b).Multiply(c), 0)
+	assertResilience(a.Multiply(b).Multiply(c).Multiply(d), 0)
+	assertResilience(a.Add(b).Multiply(c.Add(d)), 1)
+	assertResilience(a.Add(b).Add(c).Multiply(d.Add(e).Add(f)), 2)
+ 	assertResilience((a.Add(b).Add(c)).Multiply(a.Add(e).Add(f)), 2)
+    assertResilience(a.Add(a).Add(c).Multiply(d.Add(e).Add(f)), 1)
+	assertResilience((a.Add(a).Add(a)).Multiply(d.Add(e).Add(f)), 0)
+	assertResilience((a.Multiply(b)).Add(b.Multiply(c)).Add(a.Multiply(d)).Add(a.Multiply(d).Multiply(e)), 1)
+
 }
