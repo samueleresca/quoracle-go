@@ -15,16 +15,15 @@ type QuorumDistribution struct {
 	values map[Fraction]Weight
 }
 
-func (qd QuorumDistribution) GetValue() map[Fraction]Weight{
+func (qd QuorumDistribution) GetValue() map[Fraction]Weight {
 	return qd.values
 }
 
-func (qd QuorumDistribution) IsSingleValue() bool{
+func (qd QuorumDistribution) IsSingleValue() bool {
 	return len(qd.values) == 1
 }
 
-
-func canonicalizeRW(readFraction *Distribution, writeFraction *Distribution) (map[Fraction]Probability, error){
+func canonicalizeRW(readFraction *Distribution, writeFraction *Distribution) (map[Fraction]Probability, error) {
 
 	if readFraction == nil && writeFraction == nil {
 		return nil, fmt.Errorf("Either readFraction or writeFraction must be given")
@@ -38,43 +37,43 @@ func canonicalizeRW(readFraction *Distribution, writeFraction *Distribution) (ma
 		return canonicalize(readFraction)
 	}
 
-	if writeFraction != nil{
-		 cDist, err := canonicalize(writeFraction)
-		 if err != nil{
-		 	return nil, err
-		 }
+	if writeFraction != nil {
+		cDist, err := canonicalize(writeFraction)
+		if err != nil {
+			return nil, err
+		}
 
-		 r := make(map[Fraction]Probability)
+		r := make(map[Fraction]Probability)
 
-		 for f,p := range cDist {
-		 	r[1 - f] =  p
-		 }
+		for f, p := range cDist {
+			r[1-f] = p
+		}
 
-		 return r, nil
+		return r, nil
 	}
 
 	return nil, fmt.Errorf("writeFraction not specified")
 }
 
 func canonicalize(d *Distribution) (map[Fraction]Probability, error) {
-   if d == nil || len((*d).GetValue()) == 0 {
-   		return nil, fmt.Errorf("distribution cannot be nil")
-   }
+	if d == nil || len((*d).GetValue()) == 0 {
+		return nil, fmt.Errorf("distribution cannot be nil")
+	}
 
-   var totalWeight Weight = 0
+	var totalWeight Weight = 0
 
-   for _, w := range (*d).GetValue() {
-   		if w < 0{
-   			return nil, fmt.Errorf("distribution cannot have negative weights")
+	for _, w := range (*d).GetValue() {
+		if w < 0 {
+			return nil, fmt.Errorf("distribution cannot have negative weights")
 		}
 		totalWeight += w
-   }
+	}
 
-   if totalWeight == 0 {
-	   return nil, fmt.Errorf("distribution cannot have zero weight")
-   }
+	if totalWeight == 0 {
+		return nil, fmt.Errorf("distribution cannot have zero weight")
+	}
 
-   result := make(map[Fraction]Probability)
+	result := make(map[Fraction]Probability)
 
 	for f, w := range (*d).GetValue() {
 		if w > 0 {

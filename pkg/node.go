@@ -12,7 +12,7 @@ type Node struct {
 	Name          string
 	ReadCapacity  *float64
 	WriteCapacity *float64
-	Latency       *time.Time
+	Latency       *int
 }
 
 func (n Node) GetEs() []GenericExpr {
