@@ -2,6 +2,8 @@ package pkg
 
 import (
 	"fmt"
+	"github.com/lanl/clp"
+	"math"
 	"sort"
 	"time"
 )
@@ -298,6 +300,39 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		writes = writes * (1 - fr)
 
 		return reads + writes, nil
+	}
+
+	fr_load := func(fr float64 ) ([][]float64, error){
+		obj := make([][]float64, 0)
+		l := lpVariable{Name: "f", UBound: 1, LBound: 0}
+		ninf := math.Inf(-1)
+
+		for n := range qs.Nodes(){
+			xLoad := 0.0
+
+			if _, ok := xToReadQuormmVars[n]; ok {
+				vs := xToReadQuormmVars[n]
+				sumVs := 0.0
+
+				for _, v := range vs {
+					sumVs += v.Value
+				}
+				xLoad += (fr * sumVs)/ *qs.Node(n.Name).ReadCapacity
+			}
+
+			if _, ok := xToWriteQuorumVars[n]; ok {
+				vs := xToWriteQuorumVars[n]
+				sumVs := 0.0
+
+				for _, v := range vs {
+					sumVs += v.Value
+				}
+				xLoad += ((1- fr) * sumVs)/ *qs.Node(n.Name).WriteCapacity
+			}
+
+			obj = append(obj, []float64{ninf, xLoad, l.Value})
+		}
+		return obj, nil
 	}
 
 }
