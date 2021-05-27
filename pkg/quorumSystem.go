@@ -1,11 +1,31 @@
 package pkg
 
+import "fmt"
+
+type OptimizeType string
+
+const(
+	Load OptimizeType = "Load"
+	Network OptimizeType = "Network"
+	Latency OptimizeType= "Latency"
+)
 
 type QuorumSystem struct {
 	Reads GenericExpr
 	Writes GenericExpr
 	XtoNode map[string]Node
 }
+
+type StrategyOptions struct {
+	Optimize OptimizeType
+	LoadLimit *float64
+	NetworkLimit *float64
+	LatencyLimit *float64
+	ReadFraction Distribution
+	WriteFraction Distribution
+	F *int
+}
+
 
 func DefQuorumSystem(reads GenericExpr, writes GenericExpr) QuorumSystem {
 	return QuorumSystem{}
@@ -89,4 +109,37 @@ func (qs QuorumSystem) WriteResilience() int {
 
 func (qs QuorumSystem) DupFree() bool {
 	return qs.Reads.DupFree() && qs.Writes.DupFree()
+}
+
+func (qs QuorumSystem) Strategy (opts ...func(options *StrategyOptions) error) (*Strategy, error) {
+
+	sb := &StrategyOptions{}
+	// ... (write initializations with default values)...
+	for _, op := range opts{
+		err := op(sb)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if sb.Optimize == Load && sb.LoadLimit != nil {
+		return nil, fmt.Errorf("a load limit cannot be set when optimizing for load")
+	}
+
+	if sb.Optimize == Network && sb.NetworkLimit != nil {
+		return nil, fmt.Errorf("a network limit cannot be set when optimizing for network")
+	}
+
+	if sb.Optimize == Latency && sb.LatencyLimit != nil {
+		return nil, fmt.Errorf("a latency limit cannot be set when optimizing for latency")
+	}
+
+	if sb.F != nil && *sb.F < 0 {
+		return nil, fmt.Errorf("f must be >= 0")
+	}
+
+}
+
+type Strategy struct{
+
 }
