@@ -23,7 +23,7 @@ type StrategyOptions struct {
 	LatencyLimit *float64
 	ReadFraction Distribution
 	WriteFraction Distribution
-	F *int
+	F int
 }
 
 
@@ -134,12 +134,27 @@ func (qs QuorumSystem) Strategy (opts ...func(options *StrategyOptions) error) (
 		return nil, fmt.Errorf("a latency limit cannot be set when optimizing for latency")
 	}
 
-	if sb.F != nil && *sb.F < 0 {
+	if sb.F < 0 {
 		return nil, fmt.Errorf("f must be >= 0")
 	}
 
+	if sb.F == 0 {
+		return qs.loadOptimalStrategy()
+	}
+
+	d, err := canonicalizeRW(&sb.ReadFraction, &sb.WriteFraction)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return qs.loadOptimalStrategy()
 }
 
-type Strategy struct{
+func (qs QuorumSystem) loadOptimalStrategy() (*Strategy, error) {
+	
+}
+
+type Strategy struct {
 
 }
