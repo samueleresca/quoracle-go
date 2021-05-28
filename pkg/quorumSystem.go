@@ -5,7 +5,6 @@ import (
 	"github.com/lanl/clp"
 	"math"
 	"sort"
-	"time"
 )
 
 type OptimizeType string
@@ -142,8 +141,15 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 		return nil, fmt.Errorf("f must be >= 0")
 	}
 
-	if sb.F == 0 {
-		return qs.loadOptimalStrategy()
+	rq := make([]map[GenericExpr]bool, 0)
+	wq := make([]map[GenericExpr]bool, 0)
+
+	for e := range qs.ReadQuorums(){
+		rq = append(rq, e)
+	}
+
+	for e := range qs.WriteQuorums(){
+		wq = append(rq, e)
 	}
 
 	d, err := canonicalizeRW(&sb.ReadFraction, &sb.WriteFraction)
@@ -152,7 +158,14 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 		return nil, err
 	}
 
-	return qs.loadOptimalStrategy()
+	if sb.F == 0 {
+		return qs.loadOptimalStrategy(sb.Optimize, rq, wq, d,
+			sb.LoadLimit, sb.NetworkLimit, sb.LatencyLimit)
+	}
+
+	// TODO: implement resilience
+	return qs.loadOptimalStrategy(sb.Optimize, rq, wq, sb.ReadFraction.GetValue(),
+		sb.LoadLimit, sb.NetworkLimit, sb.LatencyLimit)
 }
 func (qs QuorumSystem) readQuorumLatency(quorum []Node) (*int, error) {
 	return qs.quorumLatency(quorum, qs.IsReadQuorum)
@@ -166,7 +179,7 @@ func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(map[GenericExp
 
 	sortedQ := make([]Node, 0)
 
-	for q := range quorum {
+	for _, q := range quorum {
 		sortedQ = append(sortedQ, q)
 	}
 
@@ -194,11 +207,15 @@ func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(map[GenericExp
 
 func (qs QuorumSystem) loadOptimalStrategy(
 	optimize OptimizeType,
-	readQuorums []map[Node]bool,
-	writeQuorums []map[Node]bool,
-	readFraction map[float64]float64) (*Strategy, error) {
+	readQuorums []map[GenericExpr]bool,
+	writeQuorums []map[GenericExpr]bool,
+	readFraction map[float64]float64,
+	loadLimit *float64,
+	networkLimit *float64,
+	latencyLimit *float64) (*Strategy, error) {
+
 	readQuorumVars := make([]lpVariable, 0)
-	xToReadQuormmVars := make(map[Node][]lpVariable)
+	xToReadQuorumVars := make(map[GenericExpr][]lpVariable)
 
 	for i, rq := range readQuorums {
 		v := lpVariable{Name: fmt.Sprintf("r%b", i), UBound: 1, LBound: 1, Value: 1.0}
@@ -206,16 +223,16 @@ func (qs QuorumSystem) loadOptimalStrategy(
 
 		for n := range rq {
 
-			if _, ok := xToReadQuormmVars[n]; !ok {
-				xToReadQuormmVars[n] = []lpVariable{v}
+			if _, ok := xToReadQuorumVars[n]; !ok {
+				xToReadQuorumVars[n] = []lpVariable{v}
 				continue
 			}
-			xToReadQuormmVars[n] = append(xToReadQuormmVars[n], v)
+			xToReadQuorumVars[n] = append(xToReadQuorumVars[n], v)
 		}
 	}
 
 	writeQuorumVars := make([]lpVariable, 0)
-	xToWriteQuorumVars := make(map[Node][]lpVariable)
+	xToWriteQuorumVars := make(map[GenericExpr][]lpVariable)
 
 	for i, rq := range writeQuorums {
 		v := lpVariable{Name: fmt.Sprintf("r%b", i), UBound: 1, LBound: 1}
@@ -236,7 +253,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		fr += k * v
 	}
 
-	network := func() ([]float64, [][2]float64, [][]float64) {
+	network := func(networkLimit *float64) ([]float64, [][2]float64, [][]float64) {
 		vars := make([]float64, 0)
 		constr := make([][2]float64, 0)
 		obj := make([][]float64, 0)
@@ -269,13 +286,17 @@ func (qs QuorumSystem) loadOptimalStrategy(
 			tmp = append(tmp, (1 - fr) * float64(len(writeQuorums[i])))
 		}
 
-		tmp = append(tmp, pinf)
+		if networkLimit == nil {
+			tmp = append(tmp, pinf)
+		} else {
+			tmp = append(tmp, *networkLimit)
+		}
 		obj = append(obj, tmp)
 
 		return vars, constr, obj
 	}
 
-	latency := func() ([]float64, [][2]float64, [][]float64, error)  {
+	latency := func(latencyLimit *float64) ([]float64, [][2]float64, [][]float64, error)  {
 		vars := make([]float64, 0)
 		constr := make([][2]float64, 0)
 		obj := make([][]float64, 0)
@@ -326,13 +347,17 @@ func (qs QuorumSystem) loadOptimalStrategy(
 			tmp = append(tmp, (1 - fr) * v.Value * float64(*l))
 		}
 
-		tmp = append(tmp, pinf)
+		if latencyLimit == nil {
+			tmp = append(tmp, pinf)
+		} else {
+			tmp = append(tmp, *latencyLimit)
+		}
 		obj = append(obj, tmp)
 
 		return vars, constr, obj, nil
 	}
 
-	fr_load := func() ([]float64, [][2]float64, [][]float64, error){
+	frLoad := func(loadLimit *float64) ([]float64, [][2]float64, [][]float64, error){
 		vars := make([]float64, 0)
 		constr := make([][2]float64, 0)
 		obj := make([][]float64, 0)
@@ -362,8 +387,8 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		tmp = append(tmp, ninf)
 
 		for n := range qs.Nodes(){
-			if _, ok := xToReadQuormmVars[n]; ok {
-				vs := xToReadQuormmVars[n]
+			if _, ok := xToReadQuorumVars[n]; ok {
+				vs := xToReadQuorumVars[n]
 
 				for _, v := range vs {
 					tmp = append(tmp, fr * v.Value /  *qs.Node(n.Name).ReadCapacity)
@@ -380,6 +405,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 				}
 			}
 		}
+
 
 		tmp = append(tmp, -1.0)
 		tmp = append(tmp, 0)
@@ -421,36 +447,44 @@ func (qs QuorumSystem) loadOptimalStrategy(
 
 	writeQConstraint = append(writeQConstraint, 1)
 
+	vars := make([]float64, 0)
+	constr := make([][2]float64, 0)
+	obj := make([][]float64, 0)
+
+	obj = append(obj, readQConstraint)
+	obj = append(obj, writeQConstraint)
+
 	if optimize == Load {
-		vars, constr, obj, _ := fr_load()
-
-		obj = append(obj, readQConstraint)
-		obj = append(obj, writeQConstraint)
-
-		simp.EasyLoadDenseProblem(vars, constr, obj)
+		vars, constr, obj, _ = frLoad(nil)
 	} else if  optimize == Network {
-		vars, constr, obj := network()
-
-		obj = append(obj, readQConstraint)
-		obj = append(obj, writeQConstraint)
-
-		simp.EasyLoadDenseProblem(vars, constr, obj)
+		vars, constr, obj = network(nil)
 	} else if optimize == Latency {
-		vars, constr, obj, _ := latency()
-
-		obj = append(obj, readQConstraint)
-		obj = append(obj, writeQConstraint)
-
-		simp.EasyLoadDenseProblem(vars, constr, obj)
+		vars, constr, obj, _ = latency(nil)
 	}
 
+	if latencyLimit != nil {
+		_, _, lobj, _ := latency(latencyLimit)
+		obj = append(obj, lobj[0])
+	}
 
+	if networkLimit != nil {
+		_, _, lobj, _ := latency(latencyLimit)
+		obj = append(obj, lobj[0])
+	}
+
+	if loadLimit != nil {
+		_, _, lobj, _ := frLoad(loadLimit)
+		obj = append(obj, lobj[0])
+	}
+
+	simp.EasyLoadDenseProblem(vars, constr, obj)
 	// Solve the optimization problem.
 	simp.Primal(clp.NoValuesPass, clp.NoStartFinishOptions)
 	soln := simp.PrimalColumnSolution()
 
 	fmt.Println(soln)
 
+	return &Strategy{}, nil
 }
 
 type lpVariable struct {
