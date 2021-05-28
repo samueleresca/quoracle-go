@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"github.com/lanl/clp"
 	"math"
+	"math/bits"
+	"sort"
 	"strings"
 	"time"
 )
-
 
 type GenericExpr interface {
 	Add(expr GenericExpr) Or
@@ -24,7 +25,6 @@ type GenericExpr interface {
 	GetEs() []GenericExpr
 	Dual() GenericExpr
 }
-
 
 // Node in a quorum
 type Node struct {
@@ -404,19 +404,38 @@ func (e And) Dual() GenericExpr {
 	return Or{Es: dualExprs}
 }
 
-
 // Choose represents a logical
 type Choose struct {
 	Es []GenericExpr
-	K int
+	K  int
 }
 
-func DefChoose(k int, es []GenericExpr) (Choose, error){
+func NewChoose(k int, es []GenericExpr) (Choose, error) {
 	if k <= 0 || k > len(es) {
 		return Choose{}, fmt.Errorf("k must be in the range [1, %d]", len(es))
 	}
 
-	return Choose{ Es: es, K:k}, nil
+	return Choose{Es: es, K: k}, nil
+}
+
+func DefChoose(k int, es []GenericExpr) (GenericExpr, error){
+	if len(es) == 0 {
+		return Choose{}, fmt.Errorf("no expressions provided")
+	}
+
+	if !(1 <= k && k <= len(es)){
+		return Choose{}, fmt.Errorf("k must be in the range [1, len(es)]")
+	}
+
+	if k == 1 {
+		return Or{Es: es}, nil
+	}
+
+	if k == len(es) {
+		return And{Es: es}, nil
+	}
+
+	return NewChoose(k, es)
 }
 
 func (e Choose) Add(rhs GenericExpr) Or {
@@ -431,35 +450,41 @@ func (e Choose) Quorums() chan map[GenericExpr]bool {
 	chnl := make(chan map[GenericExpr]bool)
 	flatQuorums := make([][]GenericExpr, 0)
 
-	for _, es := range e.Es {
+	for _, combo := range combinations(e.Es, e.K) {
+
 		tmp := make(map[GenericExpr]bool, 0)
 
-		for q := range es.Quorums() {
-			tmp = mergeGenericExprSets(tmp, q)
+		for _, qList := range combo {
+
+			for q := range qList.Quorums() {
+				tmp = mergeGenericExprSets(tmp, q)
+			}
 		}
+
 		flatQuorums = append(flatQuorums, exprMapToList(tmp))
+
 	}
 
 	go func() {
-		for _, sets := range product(flatQuorums...) {
+		for _, sets := range flatQuorums  {
 			chnl <- exprListToMap(sets)
 		}
 
 		// Ensure that at the end of the loop we close the channel!
 		close(chnl)
 	}()
+
 	return chnl
 }
 
 func (e Choose) IsQuorum(xs map[GenericExpr]bool) bool {
-	var found = true
+	sum := 0
 	for _, es := range e.Es {
-		if !es.IsQuorum(xs) {
-			found = false
-			return found
+		if es.IsQuorum(xs) {
+			sum += 1
 		}
 	}
-	return found
+	return sum >= e.K
 }
 
 func (e Choose) Nodes() map[Node]bool {
@@ -485,14 +510,23 @@ func (e Choose) NumLeaves() int {
 
 func (e Choose) DupFreeMinFailures() int {
 	var exprs = e.Es
-	var min = exprs[0].DupFreeMinFailures()
+
+	var subFailures []int
 
 	for _, expr := range exprs {
-		if min > expr.DupFreeMinFailures() {
-			min = expr.DupFreeMinFailures()
-		}
+		subFailures = append(subFailures, expr.DupFreeMinFailures())
 	}
-	return min
+
+	sort.Ints(subFailures)
+
+	sortedSubset := subFailures[:len(subFailures)-e.K+1]
+	total := 0
+
+	for _, v := range sortedSubset {
+		total += v
+	}
+
+	return total
 }
 
 func (e Choose) Resilience() int {
@@ -533,7 +567,7 @@ func (e Choose) String() string {
 }
 
 func (e Choose) Expr() string {
-	return "And"
+	return "Choose"
 }
 
 func (e Choose) GetEs() []GenericExpr {
@@ -545,7 +579,7 @@ func (e Choose) Dual() GenericExpr {
 	for _, es := range e.Es {
 		dualExprs = append(dualExprs, es.Dual())
 	}
-	return Or{Es: dualExprs}
+	return Choose{Es: dualExprs, K: len(e.Es) - e.K + 1}
 }
 
 // Additional methods
@@ -587,7 +621,7 @@ func mergeGenericExprSets(maps ...map[GenericExpr]bool) map[GenericExpr]bool {
 // Cartesian product of lists, see: https://www.programmersought.com/article/95476401483/
 func product(sets ...[]GenericExpr) [][]GenericExpr {
 	lens := func(i int) int { return len(sets[i]) }
-	product := [][]GenericExpr{}
+	var product [][]GenericExpr
 	for ix := make([]int, len(sets)); ix[0] < lens(0); nextIndex(ix, lens) {
 		var r []GenericExpr
 
@@ -597,6 +631,31 @@ func product(sets ...[]GenericExpr) [][]GenericExpr {
 		product = append(product, r)
 	}
 	return product
+}
+
+// Returns N combinations of GenericExpr
+func combinations(set []GenericExpr, n int) (subsets [][]GenericExpr) {
+	length := len(set)
+
+	if n > len(set) {
+		n = len(set)
+	}
+
+	for subsetBits := 1; subsetBits < (1 << length); subsetBits++ {
+		if n > 0 && bits.OnesCount(uint(subsetBits)) != n {
+			continue
+		}
+
+		var ss []GenericExpr
+
+		for object := 0; object < length; object++ {
+			if (subsetBits>>object)&1 == 1 {
+				ss = append(ss, set[object])
+			}
+		}
+		subsets = append(subsets, ss)
+	}
+	return subsets
 }
 
 func nextIndex(ix []int, lens func(i int) int) {
@@ -612,7 +671,7 @@ func nextIndex(ix []int, lens func(i int) int) {
 func exprMapToList(input map[GenericExpr]bool) []GenericExpr {
 	result := make([]GenericExpr, 0)
 
-	for k, _ := range input {
+	for k := range input {
 		result = append(result, k)
 	}
 
