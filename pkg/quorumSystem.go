@@ -144,11 +144,11 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 	rq := make([]map[GenericExpr]bool, 0)
 	wq := make([]map[GenericExpr]bool, 0)
 
-	for e := range qs.ReadQuorums(){
+	for e := range qs.ReadQuorums() {
 		rq = append(rq, e)
 	}
 
-	for e := range qs.WriteQuorums(){
+	for e := range qs.WriteQuorums() {
 		wq = append(rq, e)
 	}
 
@@ -263,14 +263,14 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		// initializes target array
 		for _, v := range readQuorumVars {
 			vars = append(vars, 1.0)
-			b := [][2]float64{{float64(v.LBound)},{float64(v.UBound)}}
+			b := [][2]float64{{float64(v.LBound)}, {float64(v.UBound)}}
 			constr = append(constr, b...)
 
 		}
 		// add constraints 0 <= q <= 1
 		for _, v := range writeQuorumVars {
 			vars = append(vars, 1.0)
-			b := [][2]float64{{float64(v.LBound)},{float64(v.UBound)}}
+			b := [][2]float64{{float64(v.LBound)}, {float64(v.UBound)}}
 			constr = append(constr, b...)
 		}
 
@@ -279,11 +279,11 @@ func (qs QuorumSystem) loadOptimalStrategy(
 
 		// network_def  - inf <= network_def <= +inf
 		for i := range readQuorumVars {
-			tmp = append(tmp, fr * float64(len(readQuorums[i])))
+			tmp = append(tmp, fr*float64(len(readQuorums[i])))
 		}
 
 		for i := range writeQuorumVars {
-			tmp = append(tmp, (1 - fr) * float64(len(writeQuorums[i])))
+			tmp = append(tmp, (1-fr)*float64(len(writeQuorums[i])))
 		}
 
 		if networkLimit == nil {
@@ -296,7 +296,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		return vars, constr, obj
 	}
 
-	latency := func(latencyLimit *float64) ([]float64, [][2]float64, [][]float64, error)  {
+	latency := func(latencyLimit *float64) ([]float64, [][2]float64, [][]float64, error) {
 		vars := make([]float64, 0)
 		constr := make([][2]float64, 0)
 		obj := make([][]float64, 0)
@@ -306,14 +306,14 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		// initializes target array
 		for _, v := range readQuorumVars {
 			vars = append(vars, 1.0)
-			b := [][2]float64{{float64(v.LBound)},{float64(v.UBound)}}
+			b := [][2]float64{{float64(v.LBound)}, {float64(v.UBound)}}
 			constr = append(constr, b...)
 
 		}
 		// add constraints 0 <= q <= 1
 		for _, v := range writeQuorumVars {
 			vars = append(vars, 1.0)
-			b := [][2]float64{{float64(v.LBound)},{float64(v.UBound)}}
+			b := [][2]float64{{float64(v.LBound)}, {float64(v.UBound)}}
 			constr = append(constr, b...)
 		}
 
@@ -331,7 +331,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 			}
 
 			l, _ := qs.readQuorumLatency(quorum)
-			tmp = append(tmp, fr * v.Value * float64(*l))
+			tmp = append(tmp, fr*v.Value*float64(*l))
 		}
 
 		for i, v := range writeQuorumVars {
@@ -344,7 +344,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 
 			l, _ := qs.writeQuorumLatency(quorum)
 
-			tmp = append(tmp, (1 - fr) * v.Value * float64(*l))
+			tmp = append(tmp, (1-fr)*v.Value*float64(*l))
 		}
 
 		if latencyLimit == nil {
@@ -357,7 +357,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		return vars, constr, obj, nil
 	}
 
-	frLoad := func(loadLimit *float64) ([]float64, [][2]float64, [][]float64, error){
+	frLoad := func(loadLimit *float64) ([]float64, [][2]float64, [][]float64, error) {
 		vars := make([]float64, 0)
 		constr := make([][2]float64, 0)
 		obj := make([][]float64, 0)
@@ -367,31 +367,31 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		// initializes target array
 		for _, v := range readQuorumVars {
 			vars = append(vars, 1.0)
-			b := [][2]float64{{float64(v.LBound)},{float64(v.UBound)}}
+			b := [][2]float64{{float64(v.LBound)}, {float64(v.UBound)}}
 			constr = append(constr, b...)
 
 		}
 		// add constraints 0 <= q <= 1
 		for _, v := range writeQuorumVars {
 			vars = append(vars, 1.0)
-			b := [][2]float64{{float64(v.LBound)},{float64(v.UBound)}}
+			b := [][2]float64{{float64(v.LBound)}, {float64(v.UBound)}}
 			constr = append(constr, b...)
 		}
 
 		// l def
 		vars = append(vars, 1.0)
-		b := [][2]float64{{ninf},{ pinf}}
+		b := [][2]float64{{ninf}, {pinf}}
 		constr = append(constr, b...)
 
 		tmp := make([]float64, 0)
 		tmp = append(tmp, ninf)
 
-		for n := range qs.Nodes(){
+		for n := range qs.Nodes() {
 			if _, ok := xToReadQuorumVars[n]; ok {
 				vs := xToReadQuorumVars[n]
 
 				for _, v := range vs {
-					tmp = append(tmp, fr * v.Value /  *qs.Node(n.Name).ReadCapacity)
+					tmp = append(tmp, fr*v.Value / *qs.Node(n.Name).ReadCapacity)
 				}
 			}
 		}
@@ -401,17 +401,15 @@ func (qs QuorumSystem) loadOptimalStrategy(
 				vs := xToWriteQuorumVars[n]
 
 				for _, v := range vs {
-					tmp = append(tmp, (1-fr) * v.Value / *qs.Node(n.Name).WriteCapacity)
+					tmp = append(tmp, (1-fr)*v.Value / *qs.Node(n.Name).WriteCapacity)
 				}
 			}
 		}
-
 
 		tmp = append(tmp, -1.0)
 		tmp = append(tmp, 0)
 
 		obj = append(obj, tmp)
-
 
 		return vars, constr, obj, nil
 	}
@@ -456,7 +454,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 
 	if optimize == Load {
 		vars, constr, obj, _ = frLoad(nil)
-	} else if  optimize == Network {
+	} else if optimize == Network {
 		vars, constr, obj = network(nil)
 	} else if optimize == Latency {
 		vars, constr, obj, _ = latency(nil)
@@ -495,17 +493,16 @@ type lpVariable struct {
 	Index  int
 }
 
-
 type Strategy struct {
-	Qs QuorumSystem
-	SigmaR []Sigma
-	SigmaW []Sigma
-	XReadProbability map[Node]float64
+	Qs                QuorumSystem
+	SigmaR            []Sigma
+	SigmaW            []Sigma
+	XReadProbability  map[Node]float64
 	XWriteProbability map[Node]float64
 }
 
 type Sigma struct {
-	Quorum GenericExpr
+	Quorum      GenericExpr
 	Probability Probability
 }
 
@@ -521,8 +518,7 @@ func (s Strategy) GetWriteQuorum() []Node {
 	return []Node{}
 }
 
-
-func (s Strategy) Load(rf *Distribution, wf * Distribution) (*float64, error){
+func (s Strategy) Load(rf *Distribution, wf *Distribution) (*float64, error) {
 	d, err := canonicalizeRW(rf, wf)
 	if err != nil {
 		return nil, err
@@ -536,7 +532,7 @@ func (s Strategy) Load(rf *Distribution, wf * Distribution) (*float64, error){
 	return &sum, nil
 }
 
-func (s Strategy) Capacity(rf *Distribution, wf * Distribution) (*float64, error){
+func (s Strategy) Capacity(rf *Distribution, wf *Distribution) (*float64, error) {
 	d, err := canonicalizeRW(rf, wf)
 	if err != nil {
 		return nil, err
@@ -550,7 +546,7 @@ func (s Strategy) Capacity(rf *Distribution, wf * Distribution) (*float64, error
 	return &sum, nil
 }
 
-func (s Strategy) NetworkLoad(rf *Distribution, wf * Distribution) (*float64, error){
+func (s Strategy) NetworkLoad(rf *Distribution, wf *Distribution) (*float64, error) {
 	d, err := canonicalizeRW(rf, wf)
 	if err != nil {
 		return nil, err
@@ -568,16 +564,15 @@ func (s Strategy) NetworkLoad(rf *Distribution, wf * Distribution) (*float64, er
 	}
 
 	writes := 0.0
-	for _, sigma  := range s.SigmaW {
-		writes += (1 - frsum) *  float64(len(sigma.Quorum.GetEs())) * sigma.Probability
+	for _, sigma := range s.SigmaW {
+		writes += (1 - frsum) * float64(len(sigma.Quorum.GetEs())) * sigma.Probability
 	}
 
 	total := reads + writes
 	return &total, nil
 }
 
-
-func (s Strategy) Latency(rf *Distribution, wf * Distribution) (*float64, error){
+func (s Strategy) Latency(rf *Distribution, wf *Distribution) (*float64, error) {
 	d, err := canonicalizeRW(rf, wf)
 	if err != nil {
 		return nil, err
@@ -591,36 +586,35 @@ func (s Strategy) Latency(rf *Distribution, wf * Distribution) (*float64, error)
 
 	reads := 0.0
 
-	for _ , rq := range s.SigmaR{
-		nodes := make([]Node,0)
+	for _, rq := range s.SigmaR {
+		nodes := make([]Node, 0)
 
-		for n := range rq.Quorum.Nodes(){
+		for n := range rq.Quorum.Nodes() {
 			nodes = append(nodes, n)
 		}
 		v, _ := s.Qs.readQuorumLatency(nodes)
 
-		reads +=  float64(*v) * rq.Probability
+		reads += float64(*v) * rq.Probability
 	}
 
 	writes := 0.0
 
-	for _ , wq := range s.SigmaW{
-		nodes := make([]Node,0)
+	for _, wq := range s.SigmaW {
+		nodes := make([]Node, 0)
 
-		for n := range wq.Quorum.Nodes(){
+		for n := range wq.Quorum.Nodes() {
 			nodes = append(nodes, n)
 		}
 		v, _ := s.Qs.readQuorumLatency(nodes)
 
-		writes +=  float64(*v) * wq.Probability
+		writes += float64(*v) * wq.Probability
 	}
 
 	total := reads + writes
 	return &total, nil
 }
 
-
-func (s Strategy) NodeLoad(node Node, rf *Distribution, wf * Distribution) (*float64, error) {
+func (s Strategy) NodeLoad(node Node, rf *Distribution, wf *Distribution) (*float64, error) {
 	d, err := canonicalizeRW(rf, wf)
 	if err != nil {
 		return nil, err
@@ -634,7 +628,7 @@ func (s Strategy) NodeLoad(node Node, rf *Distribution, wf * Distribution) (*flo
 	return &sum, nil
 }
 
-func (s Strategy) NodeUtilization(node Node, rf *Distribution, wf * Distribution) (*float64, error) {
+func (s Strategy) NodeUtilization(node Node, rf *Distribution, wf *Distribution) (*float64, error) {
 	d, err := canonicalizeRW(rf, wf)
 	if err != nil {
 		return nil, err
@@ -648,7 +642,7 @@ func (s Strategy) NodeUtilization(node Node, rf *Distribution, wf * Distribution
 	return &sum, nil
 }
 
-func (s Strategy) NodeThroughput(node Node, rf *Distribution, wf * Distribution) (*float64, error) {
+func (s Strategy) NodeThroughput(node Node, rf *Distribution, wf *Distribution) (*float64, error) {
 	d, err := canonicalizeRW(rf, wf)
 	if err != nil {
 		return nil, err
@@ -662,7 +656,7 @@ func (s Strategy) NodeThroughput(node Node, rf *Distribution, wf * Distribution)
 	return &sum, nil
 }
 
-func (s Strategy) maxload(fr float64) float64{
+func (s Strategy) maxload(fr float64) float64 {
 	max := 0.0
 
 	for n := range s.Qs.Nodes() {
@@ -676,8 +670,8 @@ func (s Strategy) maxload(fr float64) float64{
 
 func (s Strategy) nodeLoad(node Node, fr float64) float64 {
 	fw := 1 - fr
-	return fr * s.XReadProbability[node] / *node.ReadCapacity +
-		fw * s.XWriteProbability[node] / *node.WriteCapacity
+	return fr*s.XReadProbability[node] / *node.ReadCapacity +
+		fw*s.XWriteProbability[node] / *node.WriteCapacity
 }
 
 func (s Strategy) nodeUtilization(node Node, fr float64) float64 {
@@ -688,7 +682,7 @@ func (s Strategy) nodeThroughput(node Node, fr float64) float64 {
 	capacity := 1 / s.maxload(fr)
 	fw := 1 - fr
 
-	return capacity * (fr * s.XReadProbability[node] + fw * s.XWriteProbability[node])
+	return capacity * (fr*s.XReadProbability[node] + fw*s.XWriteProbability[node])
 }
 
 type NodeSorter struct {
