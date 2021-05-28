@@ -589,7 +589,77 @@ func (s Strategy) Latency(rf *Distribution, wf * Distribution) (*float64, error)
 		frsum += p * fr
 	}
 
+	reads := 0.0
 
+	for _ , rq := range s.SigmaR{
+		nodes := make([]Node,0)
+
+		for n := range rq.Quorum.Nodes(){
+			nodes = append(nodes, n)
+		}
+		v, _ := s.Qs.readQuorumLatency(nodes)
+
+		reads +=  float64(*v) * rq.Probability
+	}
+
+	writes := 0.0
+
+	for _ , wq := range s.SigmaW{
+		nodes := make([]Node,0)
+
+		for n := range wq.Quorum.Nodes(){
+			nodes = append(nodes, n)
+		}
+		v, _ := s.Qs.readQuorumLatency(nodes)
+
+		writes +=  float64(*v) * wq.Probability
+	}
+
+	total := reads + writes
+	return &total, nil
+}
+
+
+func (s Strategy) NodeLoad(node Node, rf *Distribution, wf * Distribution) (*float64, error) {
+	d, err := canonicalizeRW(rf, wf)
+	if err != nil {
+		return nil, err
+	}
+
+	sum := 0.0
+
+	for fr, p := range d {
+		sum += p * s.nodeLoad(node, fr)
+	}
+	return &sum, nil
+}
+
+func (s Strategy) NodeUtilization(node Node, rf *Distribution, wf * Distribution) (*float64, error) {
+	d, err := canonicalizeRW(rf, wf)
+	if err != nil {
+		return nil, err
+	}
+
+	sum := 0.0
+
+	for fr, p := range d {
+		sum += p * s.nodeUtilization(node, fr)
+	}
+	return &sum, nil
+}
+
+func (s Strategy) NodeThroughput(node Node, rf *Distribution, wf * Distribution) (*float64, error) {
+	d, err := canonicalizeRW(rf, wf)
+	if err != nil {
+		return nil, err
+	}
+
+	sum := 0.0
+
+	for fr, p := range d {
+		sum += p * s.nodeThroughput(node, fr)
+	}
+	return &sum, nil
 }
 
 func (s Strategy) maxload(fr float64) float64{
@@ -611,11 +681,11 @@ func (s Strategy) nodeLoad(node Node, fr float64) float64 {
 }
 
 func (s Strategy) nodeUtilization(node Node, fr float64) float64 {
-	return s.nodeLoad(node, fr) / s.load(fr)
+	return s.nodeLoad(node, fr) / s.maxload(fr)
 }
 
 func (s Strategy) nodeThroughput(node Node, fr float64) float64 {
-	capacity := 1 / s.load(fr)
+	capacity := 1 / s.maxload(fr)
 	fw := 1 - fr
 
 	return capacity * (fr * s.XReadProbability[node] + fw * s.XWriteProbability[node])
