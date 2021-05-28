@@ -1,7 +1,9 @@
 package pkg
 
 import (
+	"fmt"
 	"gotest.tools/assert"
+	"reflect"
 	"testing"
 )
 
@@ -13,7 +15,7 @@ func TestNode(t *testing.T) {
 }
 
 func TestQuorums(t *testing.T) {
-	assertQuorums := func(t *testing.T, e GenericExpr, xs []map[string]bool) {
+	assertQuorums := func(e GenericExpr, xs []map[string]bool) {
 		nodes := make([]map[string]bool, 0)
 
 		for q := range e.Quorums() {
@@ -24,7 +26,7 @@ func TestQuorums(t *testing.T) {
 			}
 			nodes = append(nodes, tmp)
 		}
-		assert.DeepEqual(t, nodes, xs)
+		assert.Assert(t, reflect.DeepEqual(nodes, xs) == true)
 	}
 
 	a, b, c := DefNode("a"), DefNode("b"), DefNode("c")
@@ -32,14 +34,14 @@ func TestQuorums(t *testing.T) {
 	assert.Assert(t, a.Multiply(b).Multiply(c).String() == "(a * b * c)")
 	assert.Assert(t, a.Add(b.Multiply(c)).String() == "(a + (b * c))")
 
-	assertQuorums(t, a.Multiply(b).Multiply(c), []map[string]bool{{"a": true, "b": true, "c": true}})
-	assertQuorums(t, a.Add(b).Add(c), []map[string]bool{{"a": true}, {"b": true}, {"c": true}})
+	assertQuorums(a.Multiply(b).Multiply(c), []map[string]bool{{"a": true, "b": true, "c": true}})
+	assertQuorums(a.Add(b).Add(c), []map[string]bool{{"a": true}, {"b": true}, {"c": true}})
 
-	assertQuorums(t, a.Add(b.Multiply(c)), []map[string]bool{{"a": true}, {"b": true, "c": true}})
-	assertQuorums(t, a.Multiply(a).Multiply(a), []map[string]bool{{"a": true}})
-	assertQuorums(t, a.Multiply(a.Add(b)), []map[string]bool{{"a": true}, {"a": true, "b": true}})
-	assertQuorums(t, a.Multiply(a.Add(b)), []map[string]bool{{"a": true}, {"a": true, "b": true}})
-	assertQuorums(t, a.Add(b).Multiply(a.Add(c)), []map[string]bool{{"a": true}, {"a": true, "c": true}, {"a": true, "b": true}, {"b": true, "c": true}})
+	assertQuorums(a.Add(b.Multiply(c)), []map[string]bool{{"a": true}, {"b": true, "c": true}})
+	assertQuorums(a.Multiply(a).Multiply(a), []map[string]bool{{"a": true}})
+	assertQuorums(a.Multiply(a.Add(b)), []map[string]bool{{"a": true}, {"a": true, "b": true}})
+	assertQuorums(a.Multiply(a.Add(b)), []map[string]bool{{"a": true}, {"a": true, "b": true}})
+	assertQuorums(a.Add(b).Multiply(a.Add(c)), []map[string]bool{{"a": true}, {"a": true, "c": true}, {"a": true, "b": true}, {"b": true, "c": true}})
 }
 
 func TestIsQuorum(t *testing.T) {
@@ -99,7 +101,9 @@ func TestIsQuorum(t *testing.T) {
 
 func TestResilience(t *testing.T) {
 	assertResilience := func(expr GenericExpr, n int) {
-		assert.Assert(t, expr.Resilience() == n)
+		assert.Assert(t, expr.Resilience() == n, fmt.Sprintf("Actual: %.10d | Expected  %.10d", expr.Resilience(), n))
+
+
 	}
 
 	a, b, c, d, e, f := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e"), DefNode("f")
@@ -122,6 +126,7 @@ func TestResilience(t *testing.T) {
 }
 
 func TestDual(t *testing.T) {
+
 	assertDual := func(x GenericExpr, y GenericExpr) {
 		assert.DeepEqual(t, x.Dual(), y)
 	}

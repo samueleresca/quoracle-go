@@ -8,41 +8,30 @@ import (
 	"time"
 )
 
+
+type GenericExpr interface {
+	Add(expr GenericExpr) Or
+	Multiply(expr GenericExpr) And
+	Quorums() chan map[GenericExpr]bool
+	IsQuorum(map[GenericExpr]bool) bool
+	Nodes() map[Node]bool
+	NumLeaves() int
+	DupFreeMinFailures() int
+	Resilience() int
+	DupFree() bool
+	String() string
+	Expr() string
+	GetEs() []GenericExpr
+	Dual() GenericExpr
+}
+
+
+// Node in a quorum
 type Node struct {
 	Name          string
 	ReadCapacity  *float64
 	WriteCapacity *float64
 	Latency       *int
-}
-
-func (n Node) GetEs() []GenericExpr {
-	return []GenericExpr{n}
-}
-
-func (n Node) Expr() string {
-	return "Node"
-}
-
-func (n Node) Add(expr GenericExpr) Or {
-	return orExpr(n, expr)
-}
-
-func (n Node) Multiply(expr GenericExpr) And {
-	return andExpr(n, expr)
-}
-
-func (n Node) Resilience() int {
-	if n.DupFree() {
-		return n.DupFreeMinFailures() - 1
-	}
-
-	qs := make([]map[GenericExpr]bool, 0)
-
-	for q := range n.Quorums() {
-		qs = append(qs, q)
-	}
-
-	return minHittingSet(qs) - 1
 }
 
 func DefNode(name string) Node {
@@ -82,8 +71,12 @@ func DefNodeWithCapacity(name string, capacity *float64, readCapacity *float64, 
 	return node
 }
 
-func (n Node) String() string {
-	return n.Name
+func (n Node) Add(expr GenericExpr) Or {
+	return orExpr(n, expr)
+}
+
+func (n Node) Multiply(expr GenericExpr) And {
+	return andExpr(n, expr)
 }
 
 func (n Node) Quorums() chan map[GenericExpr]bool {
@@ -113,10 +106,6 @@ func (n Node) Nodes() map[Node]bool {
 	return map[Node]bool{n: true}
 }
 
-func (n Node) Dual() GenericExpr {
-	return n
-}
-
 func (n Node) NumLeaves() int {
 	return 1
 }
@@ -125,89 +114,58 @@ func (n Node) DupFreeMinFailures() int {
 	return 1
 }
 
+func (n Node) Resilience() int {
+	if n.DupFree() {
+		return n.DupFreeMinFailures() - 1
+	}
+
+	qs := make([]map[GenericExpr]bool, 0)
+
+	for q := range n.Quorums() {
+		qs = append(qs, q)
+	}
+
+	return minHittingSet(qs) - 1
+}
+
 func (n Node) DupFree() bool {
 	return len(n.Nodes()) == n.NumLeaves()
 }
 
-type GenericExpr interface {
-	Add(expr GenericExpr) Or
-	Multiply(expr GenericExpr) And
-	Quorums() chan map[GenericExpr]bool
-	IsQuorum(map[GenericExpr]bool) bool
-	Nodes() map[Node]bool
-	NumLeaves() int
-	DupFreeMinFailures() int
-	Resilience() int
-	DupFree() bool
-	String() string
-	Expr() string
-	GetEs() []GenericExpr
-	Dual() GenericExpr
+func (n Node) String() string {
+	return n.Name
 }
 
-type Expr struct {
+func (n Node) Expr() string {
+	return "Node"
 }
 
-func (lhs Expr) Add(rhs GenericExpr) GenericExpr {
-	return lhs.Add(rhs)
+func (n Node) GetEs() []GenericExpr {
+	return []GenericExpr{n}
 }
 
-func (lhs Expr) Multiply(rhs GenericExpr) GenericExpr {
-	return lhs.Multiply(rhs)
+func (n Node) Dual() GenericExpr {
+	return n
 }
 
+// Or represents an logical or expression
 type Or struct {
 	Es []GenericExpr
 }
 
-func (expr Or) GetEs() []GenericExpr {
-	return expr.Es
+func (e Or) Add(rhs GenericExpr) Or {
+	return orExpr(e, rhs)
 }
 
-func (expr Or) Expr() string {
-	return "Or"
+func (e Or) Multiply(rhs GenericExpr) And {
+	return andExpr(e, rhs)
 }
 
-func (expr Or) NumLeaves() int {
-	total := 0
-
-	for _, e := range expr.Es {
-		total += e.NumLeaves()
-	}
-
-	return total
-}
-
-func (expr Or) DupFreeMinFailures() int {
-	total := 0
-
-	for _, e := range expr.Es {
-		total += e.DupFreeMinFailures()
-	}
-
-	return total
-}
-
-func (expr Or) Add(rhs GenericExpr) Or {
-	return orExpr(expr, rhs)
-}
-
-func (expr Or) Multiply(rhs GenericExpr) And {
-	return andExpr(expr, rhs)
-}
-
-func (expr Or) Dual() GenericExpr {
-	dualExprs := make([]GenericExpr, 0)
-	for _, e := range expr.Es {
-		dualExprs = append(dualExprs, e.Dual())
-	}
-	return And{Es: dualExprs}
-}
-func (expr Or) Quorums() chan map[GenericExpr]bool {
+func (e Or) Quorums() chan map[GenericExpr]bool {
 	chnl := make(chan map[GenericExpr]bool)
 	go func() {
-		for _, e := range expr.Es {
-			tmp := <-e.Quorums()
+		for _, es := range e.Es {
+			tmp := <-es.Quorums()
 			chnl <- tmp
 
 		}
@@ -217,24 +175,10 @@ func (expr Or) Quorums() chan map[GenericExpr]bool {
 	return chnl
 }
 
-func (expr Or) Resilience() int {
-	if expr.DupFree() {
-		return expr.DupFreeMinFailures() - 1
-	}
-
-	qs := make([]map[GenericExpr]bool, 0)
-
-	for q := range expr.Quorums() {
-		qs = append(qs, q)
-	}
-
-	return minHittingSet(qs) - 1
-}
-
-func (expr Or) IsQuorum(xs map[GenericExpr]bool) bool {
+func (e Or) IsQuorum(xs map[GenericExpr]bool) bool {
 	var found = false
-	for _, e := range expr.Es {
-		if e.IsQuorum(xs) {
+	for _, es := range e.Es {
+		if es.IsQuorum(xs) {
 			found = true
 			return found
 		}
@@ -242,28 +186,66 @@ func (expr Or) IsQuorum(xs map[GenericExpr]bool) bool {
 	return found
 }
 
-func (expr Or) Nodes() map[Node]bool {
+func (e Or) Nodes() map[Node]bool {
 	var final = make(map[Node]bool)
 
-	for _, e := range expr.Es {
-		for n := range e.Nodes() {
+	for _, es := range e.Es {
+		for n := range es.Nodes() {
 			final[n] = true
 		}
 	}
 	return final
 }
 
-func (expr Or) String() string {
+func (e Or) NumLeaves() int {
+	total := 0
 
-	if len(expr.Es) == 0 {
+	for _, es := range e.Es {
+		total += es.NumLeaves()
+	}
+
+	return total
+}
+
+func (e Or) DupFreeMinFailures() int {
+	total := 0
+
+	for _, es := range e.Es {
+		total += es.DupFreeMinFailures()
+	}
+
+	return total
+}
+
+func (e Or) Resilience() int {
+	if e.DupFree() {
+		return e.DupFreeMinFailures() - 1
+	}
+
+	qs := make([]map[GenericExpr]bool, 0)
+
+	for q := range e.Quorums() {
+		qs = append(qs, q)
+	}
+
+	return minHittingSet(qs) - 1
+}
+
+func (e Or) DupFree() bool {
+	return len(e.Nodes()) == e.NumLeaves()
+}
+
+func (e Or) String() string {
+
+	if len(e.Es) == 0 {
 		return "()"
 	}
 	var sb strings.Builder
 
 	sb.WriteString("(")
-	sb.WriteString(expr.Es[0].String())
+	sb.WriteString(e.Es[0].String())
 
-	for _, v := range expr.Es[1:] {
+	for _, v := range e.Es[1:] {
 		sb.WriteString(" + ")
 		sb.WriteString(v.String())
 	}
@@ -272,67 +254,43 @@ func (expr Or) String() string {
 	return sb.String()
 }
 
+func (e Or) Expr() string {
+	return "Or"
+}
+
+func (e Or) GetEs() []GenericExpr {
+	return e.Es
+}
+
+func (e Or) Dual() GenericExpr {
+	dualExprs := make([]GenericExpr, 0)
+	for _, es := range e.Es {
+		dualExprs = append(dualExprs, es.Dual())
+	}
+	return And{Es: dualExprs}
+}
+
+// And represents a logical and operation in the quorums
 type And struct {
 	Es []GenericExpr
 }
 
-func (expr And) GetEs() []GenericExpr {
-	return expr.Es
+func (e And) Add(rhs GenericExpr) Or {
+	return orExpr(e, rhs)
 }
 
-func (expr And) Expr() string {
-	return "And"
-}
-func (expr And) DupFree() bool {
-	return len(expr.Nodes()) == expr.NumLeaves()
+func (e And) Multiply(rhs GenericExpr) And {
+	return andExpr(e, rhs)
 }
 
-func (expr And) Dual() GenericExpr {
-	dualExprs := make([]GenericExpr, 0)
-	for _, e := range expr.Es {
-		dualExprs = append(dualExprs, e.Dual())
-	}
-	return Or{Es: dualExprs}
-}
-func (expr And) String() string {
-	if len(expr.Es) == 0 {
-		return "()"
-	}
-	var sb strings.Builder
-
-	sb.WriteString("(")
-	sb.WriteString(expr.Es[0].String())
-
-	for _, v := range expr.Es[1:] {
-		sb.WriteString(" * ")
-		sb.WriteString(v.String())
-	}
-
-	sb.WriteString(")")
-
-	return sb.String()
-}
-
-func (expr And) Add(rhs GenericExpr) Or {
-	return orExpr(expr, rhs)
-}
-
-func (expr And) Multiply(rhs GenericExpr) And {
-	return andExpr(expr, rhs)
-}
-
-func (expr Or) DupFree() bool {
-	return len(expr.Nodes()) == expr.NumLeaves()
-}
-
-func (expr And) Quorums() chan map[GenericExpr]bool {
+func (e And) Quorums() chan map[GenericExpr]bool {
 	chnl := make(chan map[GenericExpr]bool)
 	flatQuorums := make([][]GenericExpr, 0)
 
-	for _, e := range expr.Es {
+	for _, es := range e.Es {
 		tmp := make(map[GenericExpr]bool, 0)
 
-		for q := range e.Quorums() {
+		for q := range es.Quorums() {
 			tmp = mergeGenericExprSets(tmp, q)
 		}
 		flatQuorums = append(flatQuorums, exprMapToList(tmp))
@@ -349,23 +307,10 @@ func (expr And) Quorums() chan map[GenericExpr]bool {
 	return chnl
 }
 
-func (expr And) Resilience() int {
-	if expr.DupFree() {
-		return expr.DupFreeMinFailures() - 1
-	}
-
-	qs := make([]map[GenericExpr]bool, 0)
-
-	for q := range expr.Quorums() {
-		qs = append(qs, q)
-	}
-
-	return minHittingSet(qs) - 1
-}
-func (expr And) IsQuorum(xs map[GenericExpr]bool) bool {
+func (e And) IsQuorum(xs map[GenericExpr]bool) bool {
 	var found = true
-	for _, e := range expr.Es {
-		if !e.IsQuorum(xs) {
+	for _, es := range e.Es {
+		if !es.IsQuorum(xs) {
 			found = false
 			return found
 		}
@@ -373,29 +318,29 @@ func (expr And) IsQuorum(xs map[GenericExpr]bool) bool {
 	return found
 }
 
-func (expr And) Nodes() map[Node]bool {
+func (e And) Nodes() map[Node]bool {
 	var final = make(map[Node]bool)
 
-	for _, e := range expr.Es {
-		for n := range e.Nodes() {
+	for _, es := range e.Es {
+		for n := range es.Nodes() {
 			final[n] = true
 		}
 	}
 	return final
 }
 
-func (expr And) NumLeaves() int {
+func (e And) NumLeaves() int {
 	total := 0
 
-	for _, e := range expr.Es {
-		total += e.NumLeaves()
+	for _, es := range e.Es {
+		total += es.NumLeaves()
 	}
 
 	return total
 }
 
-func (expr And) DupFreeMinFailures() int {
-	var exprs = expr.Es
+func (e And) DupFreeMinFailures() int {
+	var exprs = e.Es
 	var min = exprs[0].DupFreeMinFailures()
 
 	for _, expr := range exprs {
@@ -405,6 +350,205 @@ func (expr And) DupFreeMinFailures() int {
 	}
 	return min
 }
+
+func (e And) Resilience() int {
+	if e.DupFree() {
+		return e.DupFreeMinFailures() - 1
+	}
+
+	qs := make([]map[GenericExpr]bool, 0)
+
+	for q := range e.Quorums() {
+		qs = append(qs, q)
+	}
+
+	return minHittingSet(qs) - 1
+}
+
+func (e And) DupFree() bool {
+	return len(e.Nodes()) == e.NumLeaves()
+}
+
+func (e And) String() string {
+	if len(e.Es) == 0 {
+		return "()"
+	}
+	var sb strings.Builder
+
+	sb.WriteString("(")
+	sb.WriteString(e.Es[0].String())
+
+	for _, v := range e.Es[1:] {
+		sb.WriteString(" * ")
+		sb.WriteString(v.String())
+	}
+
+	sb.WriteString(")")
+
+	return sb.String()
+}
+
+func (e And) Expr() string {
+	return "And"
+}
+
+func (e And) GetEs() []GenericExpr {
+	return e.Es
+}
+
+func (e And) Dual() GenericExpr {
+	dualExprs := make([]GenericExpr, 0)
+	for _, es := range e.Es {
+		dualExprs = append(dualExprs, es.Dual())
+	}
+	return Or{Es: dualExprs}
+}
+
+
+// Choose represents a logical
+type Choose struct {
+	Es []GenericExpr
+	K int
+}
+
+func DefChoose(k int, es []GenericExpr) (Choose, error){
+	if k <= 0 || k > len(es) {
+		return Choose{}, fmt.Errorf("k must be in the range [1, %d]", len(es))
+	}
+
+	return Choose{ Es: es, K:k}, nil
+}
+
+func (e Choose) Add(rhs GenericExpr) Or {
+	return orExpr(e, rhs)
+}
+
+func (e Choose) Multiply(rhs GenericExpr) And {
+	return andExpr(e, rhs)
+}
+
+func (e Choose) Quorums() chan map[GenericExpr]bool {
+	chnl := make(chan map[GenericExpr]bool)
+	flatQuorums := make([][]GenericExpr, 0)
+
+	for _, es := range e.Es {
+		tmp := make(map[GenericExpr]bool, 0)
+
+		for q := range es.Quorums() {
+			tmp = mergeGenericExprSets(tmp, q)
+		}
+		flatQuorums = append(flatQuorums, exprMapToList(tmp))
+	}
+
+	go func() {
+		for _, sets := range product(flatQuorums...) {
+			chnl <- exprListToMap(sets)
+		}
+
+		// Ensure that at the end of the loop we close the channel!
+		close(chnl)
+	}()
+	return chnl
+}
+
+func (e Choose) IsQuorum(xs map[GenericExpr]bool) bool {
+	var found = true
+	for _, es := range e.Es {
+		if !es.IsQuorum(xs) {
+			found = false
+			return found
+		}
+	}
+	return found
+}
+
+func (e Choose) Nodes() map[Node]bool {
+	var final = make(map[Node]bool)
+
+	for _, es := range e.Es {
+		for n := range es.Nodes() {
+			final[n] = true
+		}
+	}
+	return final
+}
+
+func (e Choose) NumLeaves() int {
+	total := 0
+
+	for _, es := range e.Es {
+		total += es.NumLeaves()
+	}
+
+	return total
+}
+
+func (e Choose) DupFreeMinFailures() int {
+	var exprs = e.Es
+	var min = exprs[0].DupFreeMinFailures()
+
+	for _, expr := range exprs {
+		if min > expr.DupFreeMinFailures() {
+			min = expr.DupFreeMinFailures()
+		}
+	}
+	return min
+}
+
+func (e Choose) Resilience() int {
+	if e.DupFree() {
+		return e.DupFreeMinFailures() - 1
+	}
+
+	qs := make([]map[GenericExpr]bool, 0)
+
+	for q := range e.Quorums() {
+		qs = append(qs, q)
+	}
+
+	return minHittingSet(qs) - 1
+}
+
+func (e Choose) DupFree() bool {
+	return len(e.Nodes()) == e.NumLeaves()
+}
+
+func (e Choose) String() string {
+	if len(e.Es) == 0 {
+		return "()"
+	}
+	var sb strings.Builder
+
+	sb.WriteString("(")
+	sb.WriteString(e.Es[0].String())
+
+	for _, v := range e.Es[1:] {
+		sb.WriteString(" * ")
+		sb.WriteString(v.String())
+	}
+
+	sb.WriteString(")")
+
+	return sb.String()
+}
+
+func (e Choose) Expr() string {
+	return "And"
+}
+
+func (e Choose) GetEs() []GenericExpr {
+	return e.Es
+}
+
+func (e Choose) Dual() GenericExpr {
+	dualExprs := make([]GenericExpr, 0)
+	for _, es := range e.Es {
+		dualExprs = append(dualExprs, es.Dual())
+	}
+	return Or{Es: dualExprs}
+}
+
+// Additional methods
 
 func orExpr(lhs GenericExpr, rhs GenericExpr) Or {
 	if lhs.Expr() == "Or" && rhs.Expr() == "Or" {
