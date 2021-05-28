@@ -495,7 +495,83 @@ type lpVariable struct {
 	Index  int
 }
 
+
 type Strategy struct {
+	Qs QuorumSystem
+	SigmaR  map[GenericExpr]float64
+	SigmaW	map[GenericExpr]float64
+	XReadProbability map[Node]float64
+	XWriteProbability map[Node]float64
+}
+
+func (s Strategy) String() string {
+	return ""
+}
+
+func (s Strategy) GetReadQuorum() []Node {
+	return []Node{}
+}
+
+func (s Strategy) GetWriteQuorum() []Node {
+	return []Node{}
+}
+
+
+func (s Strategy) Load(rf *Distribution, wf * Distribution) (*float64, error){
+	d, err := canonicalizeRW(rf, wf)
+	if err != nil {
+		return nil, err
+	}
+
+	sum := 0.0
+
+	for fr, p := range d {
+		sum += p * s.maxload(fr)
+	}
+	return &sum, nil
+}
+
+func (s Strategy) Capacity(rf *Distribution, wf * Distribution) (*float64, error){
+	d, err := canonicalizeRW(rf, wf)
+	if err != nil {
+		return nil, err
+	}
+
+	sum := 0.0
+
+	for fr, p := range d {
+		sum += p * 1.0 / s.maxload(fr)
+	}
+	return &sum, nil
+}
+
+func (s Strategy) maxload(fr float64) float64{
+	max := 0.0
+
+	for n := range s.Qs.Nodes() {
+		if s.nodeLoad(n, fr) > max {
+			max = s.nodeLoad(n, fr)
+		}
+	}
+
+	return max
+}
+
+func (s Strategy) nodeLoad(node Node, fr float64) float64 {
+	fw := 1 - fr
+	return fr * s.XReadProbability[node] / *node.ReadCapacity +
+		fw * s.XWriteProbability[node] / *node.WriteCapacity
+}
+
+func (s Strategy) nodeUtilization(node Node, fr float64) float64 {
+	return s.nodeLoad(node, fr) / s.load(fr)
+}
+
+func (s Strategy) nodeThroughput(node Node, fr float64) float64 {
+	capacity := 1 / s.load(fr)
+	fw := 1 - fr
+
+	return capacity * (fr * s.XReadProbability[node] + fw * s.XWriteProbability[node])
 }
 
 type NodeSorter struct {
