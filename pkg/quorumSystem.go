@@ -498,10 +498,15 @@ type lpVariable struct {
 
 type Strategy struct {
 	Qs QuorumSystem
-	SigmaR  map[GenericExpr]float64
-	SigmaW	map[GenericExpr]float64
+	SigmaR []Sigma
+	SigmaW []Sigma
 	XReadProbability map[Node]float64
 	XWriteProbability map[Node]float64
+}
+
+type Sigma struct {
+	Quorum GenericExpr
+	Probability Probability
 }
 
 func (s Strategy) String() string {
@@ -543,6 +548,48 @@ func (s Strategy) Capacity(rf *Distribution, wf * Distribution) (*float64, error
 		sum += p * 1.0 / s.maxload(fr)
 	}
 	return &sum, nil
+}
+
+func (s Strategy) NetworkLoad(rf *Distribution, wf * Distribution) (*float64, error){
+	d, err := canonicalizeRW(rf, wf)
+	if err != nil {
+		return nil, err
+	}
+
+	frsum := 0.0
+
+	for fr, p := range d {
+		frsum += p * fr
+	}
+
+	reads := 0.0
+	for _, sigma := range s.SigmaR {
+		reads += frsum * float64(len(sigma.Quorum.GetEs())) * sigma.Probability
+	}
+
+	writes := 0.0
+	for _, sigma  := range s.SigmaW {
+		writes += (1 - frsum) *  float64(len(sigma.Quorum.GetEs())) * sigma.Probability
+	}
+
+	total := reads + writes
+	return &total, nil
+}
+
+
+func (s Strategy) Latency(rf *Distribution, wf * Distribution) (*float64, error){
+	d, err := canonicalizeRW(rf, wf)
+	if err != nil {
+		return nil, err
+	}
+
+	frsum := 0.0
+
+	for fr, p := range d {
+		frsum += p * fr
+	}
+
+
 }
 
 func (s Strategy) maxload(fr float64) float64{
