@@ -193,6 +193,7 @@ func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(map[GenericExp
 }
 
 func (qs QuorumSystem) loadOptimalStrategy(
+	optimize OptimizeType,
 	readQuorums []map[Node]bool,
 	writeQuorums []map[Node]bool,
 	readFraction map[float64]float64) (*Strategy, error) {
@@ -235,29 +236,70 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		fr += k * v
 	}
 
-	network := func() float64 {
-		reads := 0.0
+	network := func() ([]float64, [][2]float64, [][]float64) {
+		vars := make([]float64, 0)
+		constr := make([][2]float64, 0)
+		obj := make([][]float64, 0)
+		ninf := math.Inf(-1)
+		pinf := math.Inf(1)
 
-		for i, v := range readQuorumVars {
-			reads += v.Value * float64(len(readQuorums[i]))
+		// initializes target array
+		for _, v := range readQuorumVars {
+			vars = append(vars, 1.0)
+			b := [][2]float64{{float64(v.LBound)},{float64(v.UBound)}}
+			constr = append(constr, b...)
+
+		}
+		// add constraints 0 <= q <= 1
+		for _, v := range writeQuorumVars {
+			vars = append(vars, 1.0)
+			b := [][2]float64{{float64(v.LBound)},{float64(v.UBound)}}
+			constr = append(constr, b...)
 		}
 
-		reads = reads * fr
+		tmp := make([]float64, 0)
+		tmp = append(tmp, ninf)
 
-		writes := 0.0
-
-		for i, v := range writeQuorumVars {
-			reads += v.Value * float64(len(writeQuorums[i]))
+		// network_def  - inf <= network_def <= +inf
+		for i := range readQuorumVars {
+			tmp = append(tmp, fr * float64(len(readQuorums[i])))
 		}
 
-		writes = writes * (1 - fr)
+		for i := range writeQuorumVars {
+			tmp = append(tmp, (1 - fr) * float64(len(writeQuorums[i])))
+		}
 
-		return reads + writes
+		tmp = append(tmp, pinf)
+		obj = append(obj, tmp)
+
+		return vars, constr, obj
 	}
 
-	latency := func() (float64, error) {
+	latency := func() ([]float64, [][2]float64, [][]float64, error)  {
+		vars := make([]float64, 0)
+		constr := make([][2]float64, 0)
+		obj := make([][]float64, 0)
+		ninf := math.Inf(-1)
+		pinf := math.Inf(1)
 
-		reads := 0.0
+		// initializes target array
+		for _, v := range readQuorumVars {
+			vars = append(vars, 1.0)
+			b := [][2]float64{{float64(v.LBound)},{float64(v.UBound)}}
+			constr = append(constr, b...)
+
+		}
+		// add constraints 0 <= q <= 1
+		for _, v := range writeQuorumVars {
+			vars = append(vars, 1.0)
+			b := [][2]float64{{float64(v.LBound)},{float64(v.UBound)}}
+			constr = append(constr, b...)
+		}
+
+		// building latency objs   -inf <= latency_def <= inf
+
+		tmp := make([]float64, 0)
+		tmp = append(tmp, ninf)
 
 		for i, v := range readQuorumVars {
 			quorum := make([]Node, 0)
@@ -267,18 +309,9 @@ func (qs QuorumSystem) loadOptimalStrategy(
 				quorum = append(quorum, q)
 			}
 
-			l, err := qs.readQuorumLatency(quorum)
-
-			if err != nil {
-				return 0, err
-			}
-
-			reads += v.Value * float64(*l)
+			l, _ := qs.readQuorumLatency(quorum)
+			tmp = append(tmp, fr * v.Value * float64(*l))
 		}
-
-		reads = reads * fr
-
-		writes := 0.0
 
 		for i, v := range writeQuorumVars {
 			quorum := make([]Node, 0)
@@ -288,52 +321,135 @@ func (qs QuorumSystem) loadOptimalStrategy(
 				quorum = append(quorum, q)
 			}
 
-			l, err := qs.writeQuorumLatency(quorum)
+			l, _ := qs.writeQuorumLatency(quorum)
 
-			if err != nil {
-				return 0, err
-			}
-
-			reads += v.Value * float64(*l)
+			tmp = append(tmp, (1 - fr) * v.Value * float64(*l))
 		}
 
-		writes = writes * (1 - fr)
+		tmp = append(tmp, pinf)
+		obj = append(obj, tmp)
 
-		return reads + writes, nil
+		return vars, constr, obj, nil
 	}
 
-	fr_load := func(fr float64 ) ([][]float64, error){
+	fr_load := func() ([]float64, [][2]float64, [][]float64, error){
+		vars := make([]float64, 0)
+		constr := make([][2]float64, 0)
 		obj := make([][]float64, 0)
-		l := lpVariable{Name: "f", UBound: 1, LBound: 0}
 		ninf := math.Inf(-1)
+		pinf := math.Inf(1)
+
+		// initializes target array
+		for _, v := range readQuorumVars {
+			vars = append(vars, 1.0)
+			b := [][2]float64{{float64(v.LBound)},{float64(v.UBound)}}
+			constr = append(constr, b...)
+
+		}
+		// add constraints 0 <= q <= 1
+		for _, v := range writeQuorumVars {
+			vars = append(vars, 1.0)
+			b := [][2]float64{{float64(v.LBound)},{float64(v.UBound)}}
+			constr = append(constr, b...)
+		}
+
+		// l def
+		vars = append(vars, 1.0)
+		b := [][2]float64{{ninf},{ pinf}}
+		constr = append(constr, b...)
+
+		tmp := make([]float64, 0)
+		tmp = append(tmp, ninf)
 
 		for n := range qs.Nodes(){
-			xLoad := 0.0
-
 			if _, ok := xToReadQuormmVars[n]; ok {
 				vs := xToReadQuormmVars[n]
-				sumVs := 0.0
 
 				for _, v := range vs {
-					sumVs += v.Value
+					tmp = append(tmp, fr * v.Value /  *qs.Node(n.Name).ReadCapacity)
 				}
-				xLoad += (fr * sumVs)/ *qs.Node(n.Name).ReadCapacity
 			}
+		}
 
+		for n := range qs.Nodes() {
 			if _, ok := xToWriteQuorumVars[n]; ok {
 				vs := xToWriteQuorumVars[n]
-				sumVs := 0.0
 
 				for _, v := range vs {
-					sumVs += v.Value
+					tmp = append(tmp, (1-fr) * v.Value / *qs.Node(n.Name).WriteCapacity)
 				}
-				xLoad += ((1- fr) * sumVs)/ *qs.Node(n.Name).WriteCapacity
 			}
-
-			obj = append(obj, []float64{ninf, xLoad, l.Value})
 		}
-		return obj, nil
+
+		tmp = append(tmp, -1.0)
+		tmp = append(tmp, 0)
+
+		obj = append(obj, tmp)
+
+
+		return vars, constr, obj, nil
 	}
+
+	simp := clp.NewSimplex()
+	simp.SetOptimizationDirection(clp.Minimize)
+
+	// read quorum constraint
+	readQConstraint := make([]float64, 0)
+	readQConstraint = append(readQConstraint, 1)
+
+	for range readQuorumVars {
+		readQConstraint = append(readQConstraint, 1.0)
+	}
+
+	for range writeQuorumVars {
+		readQConstraint = append(readQConstraint, 0.0)
+	}
+
+	readQConstraint = append(readQConstraint, 1)
+
+	// write quorum constraint
+	writeQConstraint := make([]float64, 0)
+	writeQConstraint = append(writeQConstraint, 1)
+
+	for range readQuorumVars {
+		writeQConstraint = append(writeQConstraint, 0.0)
+	}
+
+	for range writeQuorumVars {
+		readQConstraint = append(writeQConstraint, 1.0)
+	}
+
+	writeQConstraint = append(writeQConstraint, 1)
+
+	if optimize == Load {
+		vars, constr, obj, _ := fr_load()
+
+		obj = append(obj, readQConstraint)
+		obj = append(obj, writeQConstraint)
+
+		simp.EasyLoadDenseProblem(vars, constr, obj)
+	} else if  optimize == Network {
+		vars, constr, obj := network()
+
+		obj = append(obj, readQConstraint)
+		obj = append(obj, writeQConstraint)
+
+		simp.EasyLoadDenseProblem(vars, constr, obj)
+	} else if optimize == Latency {
+		vars, constr, obj, _ := latency()
+
+		obj = append(obj, readQConstraint)
+		obj = append(obj, writeQConstraint)
+
+		simp.EasyLoadDenseProblem(vars, constr, obj)
+	}
+
+
+	// Solve the optimization problem.
+	simp.Primal(clp.NoValuesPass, clp.NoStartFinishOptions)
+	soln := simp.PrimalColumnSolution()
+
+	fmt.Println(soln)
 
 }
 
@@ -342,6 +458,7 @@ type lpVariable struct {
 	Value  float64
 	UBound int
 	LBound int
+	Index  int
 }
 
 type Strategy struct {
