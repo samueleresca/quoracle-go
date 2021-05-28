@@ -32,7 +32,7 @@ func TestQuorums(t *testing.T) {
 
 		var expected []string
 
-		for _, x := range xs  {
+		for _, x := range xs {
 			sort.Strings(x)
 			expected = append(expected, strings.Join(x, ""))
 		}
@@ -40,16 +40,15 @@ func TestQuorums(t *testing.T) {
 		sort.Strings(actual)
 		sort.Strings(expected)
 
-
-		assert.Assert(t, reflect.DeepEqual(actual, expected)== true, fmt.Sprintf("assertQuorums - Actual: %v | Expected  %v", actual, expected))
+		assert.Assert(t, reflect.DeepEqual(actual, expected) == true, fmt.Sprintf("assertQuorums - Actual: %v | Expected  %v", actual, expected))
 	}
 
-	a, b, c := DefNode("a"), DefNode("b"), DefNode("c")
+	a, b, c, d, e, f := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e"), DefNode("f")
 	assert.Assert(t, a.Add(b).Add(c).String() == "(a + b + c)")
 	assert.Assert(t, a.Multiply(b).Multiply(c).String() == "(a * b * c)")
 	assert.Assert(t, a.Add(b.Multiply(c)).String() == "(a + (b * c))")
 
-	assertQuorums(a.Multiply(b).Multiply(c), [][]string {{"a", "b", "c"}})
+	assertQuorums(a.Multiply(b).Multiply(c), [][]string{{"a", "b", "c"}})
 	assertQuorums(a.Add(b).Add(c), [][]string{{"a"}, {"b"}, {"c"}})
 
 	assertQuorums(a.Add(b.Multiply(c)), [][]string{{"a"}, {"b", "c"}})
@@ -58,14 +57,30 @@ func TestQuorums(t *testing.T) {
 	assertQuorums(a.Multiply(a.Add(b)), [][]string{{"a"}, {"a", "b"}})
 	assertQuorums(a.Add(b).Multiply(a.Add(c)), [][]string{{"a"}, {"a", "c"}, {"a", "b"}, {"b", "c"}})
 
-	expr, _ := DefChoose(1, []GenericExpr{a, b, c} )
-	assertQuorums(expr,[][]string{{"a"}, {"b"}, {"c"}})
+	expr, _ := DefChoose(1, []GenericExpr{a, b, c})
+	assertQuorums(expr, [][]string{{"a"}, {"b"}, {"c"}})
 
 	expr, _ = DefChoose(2, []GenericExpr{a, b, c})
 	assertQuorums(expr, [][]string{{"a", "c"}, {"a", "b"}, {"b", "c"}})
 
 	expr, _ = DefChoose(3, []GenericExpr{a, b, c})
 	assertQuorums(expr, [][]string{{"a", "b", "c"}})
+
+	expr1, _ := DefChoose(2, []GenericExpr{a, b, c})
+	expr2, _ := DefChoose(2, []GenericExpr{d, e, f})
+	expr3, _ := DefChoose(2, []GenericExpr{a, c, e})
+
+	expr, _ = DefChoose(2, []GenericExpr{expr1, expr2, expr3})
+
+	assertQuorums(expr, [][]string{{"a", "b", "d", "e"}, {"a", "b", "d", "f"}, {"a", "b", "e", "f"},
+		{"a", "c", "d", "e"}, {"a", "c", "d", "f"}, {"a", "c", "e", "f"},
+		{"b", "c", "d", "e"}, {"b", "c", "d", "f"}, {"b", "c", "e", "f"},
+		{"a", "b", "a", "c"}, {"a", "b", "a", "e"}, {"a", "b", "c", "e"},
+		{"a", "c", "a", "c"}, {"a", "c", "a", "e"}, {"a", "c", "c", "e"},
+		{"b", "c", "a", "c"}, {"b", "c", "a", "e"}, {"b", "c", "c", "e"},
+		{"d", "e", "a", "c"}, {"d", "e", "a", "e"}, {"d", "e", "c", "e"},
+		{"d", "f", "a", "c"}, {"d", "f", "a", "e"}, {"d", "f", "c", "e"},
+		{"e", "f", "a", "c"}, {"e", "f", "a", "e"}, {"e", "f", "c", "e"}})
 }
 
 func TestIsQuorum(t *testing.T) {
@@ -156,7 +171,6 @@ func TestResilience(t *testing.T) {
 
 	expr, _ = DefChoose(4, []GenericExpr{a, b, c, d, e})
 	assertResilience(expr, 1)
-
 
 	expr, _ = DefChoose(4, []GenericExpr{a, b, c, d, e})
 	assertResilience(expr, 1)

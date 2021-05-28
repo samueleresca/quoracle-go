@@ -418,12 +418,12 @@ func NewChoose(k int, es []GenericExpr) (Choose, error) {
 	return Choose{Es: es, K: k}, nil
 }
 
-func DefChoose(k int, es []GenericExpr) (GenericExpr, error){
+func DefChoose(k int, es []GenericExpr) (GenericExpr, error) {
 	if len(es) == 0 {
 		return Choose{}, fmt.Errorf("no expressions provided")
 	}
 
-	if !(1 <= k && k <= len(es)){
+	if !(1 <= k && k <= len(es)) {
 		return Choose{}, fmt.Errorf("k must be in the range [1, len(es)]")
 	}
 
@@ -466,7 +466,7 @@ func (e Choose) Quorums() chan map[GenericExpr]bool {
 	}
 
 	go func() {
-		for _, sets := range flatQuorums  {
+		for _, sets := range flatQuorums {
 			chnl <- exprListToMap(sets)
 		}
 
