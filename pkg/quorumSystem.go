@@ -39,8 +39,6 @@ type lpVariable struct {
 	Index  int
 }
 
-
-
 func DefQuorumSystem(reads GenericExpr, writes GenericExpr) (QuorumSystem, error) {
 	optionalWrites := reads.Dual()
 
@@ -187,21 +185,19 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 		sb.LoadLimit, sb.NetworkLimit, sb.LatencyLimit)
 }
 
-
-func (qs QuorumSystem) UniformStrategy(f int ) (Strategy, error){
+func (qs QuorumSystem) UniformStrategy(f int) (Strategy, error) {
 
 	readQuorums := make([]ExprSet, 0)
 	writeQuorums := make([]ExprSet, 0)
 
-
 	if f < 0 {
 		return Strategy{}, fmt.Errorf("f must be >= 0")
 	} else if f == 0 {
-		for q := range qs.ReadQuorums(){
+		for q := range qs.ReadQuorums() {
 			readQuorums = append(readQuorums, q)
 		}
 
-		for q := range qs.WriteQuorums(){
+		for q := range qs.WriteQuorums() {
 			writeQuorums = append(writeQuorums, q)
 		}
 	}
@@ -212,40 +208,39 @@ func (qs QuorumSystem) UniformStrategy(f int ) (Strategy, error){
 	sigmaR := make([]SigmaRecord, 0)
 	sigmaW := make([]SigmaRecord, 0)
 
-	for _, q := range readQuorums{
-		sigmaR = append(sigmaR, SigmaRecord{q, 1/float64(len(readQuorums))})
+	for _, q := range readQuorums {
+		sigmaR = append(sigmaR, SigmaRecord{q, 1 / float64(len(readQuorums))})
 	}
 
-	for _, q := range writeQuorums{
-		sigmaW = append(sigmaW, SigmaRecord{ q, 1/float64(len(writeQuorums))})
+	for _, q := range writeQuorums {
+		sigmaW = append(sigmaW, SigmaRecord{q, 1 / float64(len(writeQuorums))})
 	}
-
 
 	return Strategy{SigmaR: Sigma{sigmaR}, SigmaW: Sigma{sigmaW}}, nil
 }
 
-func (qs QuorumSystem) minimize(sets []ExprSet) []ExprSet{
+func (qs QuorumSystem) minimize(sets []ExprSet) []ExprSet {
 
 	sort.Slice(sets, func(i, j int) bool {
 		return len(sets[i]) < len(sets[j])
 	})
 
-	 isSuperSet := func(e []ExprSet, x ExprSet) bool{
-			isSS := true
-			for _, y := range e {
-				for k := range x {
-					if _, exists := y[k]; !exists {
-						isSS = false
-					}
+	isSuperSet := func(e []ExprSet, x ExprSet) bool {
+		isSS := true
+		for _, y := range e {
+			for k := range x {
+				if _, exists := y[k]; !exists {
+					isSS = false
 				}
 			}
-			return isSS
+		}
+		return isSS
 	}
 
 	minimalElements := make([]ExprSet, 0)
 
 	for _, v := range sets {
-		if !(isSuperSet(minimalElements, v)){
+		if !(isSuperSet(minimalElements, v)) {
 			minimalElements = append(minimalElements, v)
 		}
 	}
@@ -253,7 +248,7 @@ func (qs QuorumSystem) minimize(sets []ExprSet) []ExprSet{
 	return minimalElements
 }
 
-func (qs QuorumSystem) fResilientQuorums(f int, xs []Node, e GenericExpr){
+func (qs QuorumSystem) fResilientQuorums(f int, xs []Node, e GenericExpr) {
 
 }
 
@@ -575,8 +570,6 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	return &Strategy{}, nil
 }
 
-
-
 //Strategy
 type Strategy struct {
 	Qs                QuorumSystem
@@ -586,9 +579,8 @@ type Strategy struct {
 	XWriteProbability map[Node]float64
 }
 
-
-type SigmaRecord struct{
-	Quorum    ExprSet
+type SigmaRecord struct {
+	Quorum      ExprSet
 	Probability Probability
 }
 type Sigma struct {
@@ -805,4 +797,3 @@ func (by By) Sort(nodes []Node) {
 	}
 	sort.Sort(ps)
 }
-
