@@ -67,8 +67,8 @@ func (qs QuorumSystem) Node(x string) Node {
 	return qs.XtoNode[x]
 }
 
-func (qs QuorumSystem) Nodes() map[Node]bool {
-	r := make(map[Node]bool, 0)
+func (qs QuorumSystem) Nodes() NodeSet {
+	r := make(NodeSet, 0)
 
 	for n := range qs.Reads.Nodes() {
 		r[n] = true
@@ -91,7 +91,7 @@ func (qs QuorumSystem) Elements() map[string]bool {
 	return r
 }
 
-func (qs QuorumSystem) Resilience() int {
+func (qs QuorumSystem) Resilience() uint {
 	rr := qs.ReadResilience()
 	ww := qs.WriteResilience()
 
@@ -102,11 +102,11 @@ func (qs QuorumSystem) Resilience() int {
 	return ww
 }
 
-func (qs QuorumSystem) ReadResilience() int {
+func (qs QuorumSystem) ReadResilience() uint {
 	return qs.Reads.Resilience()
 }
 
-func (qs QuorumSystem) WriteResilience() int {
+func (qs QuorumSystem) WriteResilience() uint {
 	return qs.Writes.Resilience()
 }
 

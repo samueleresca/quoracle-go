@@ -56,7 +56,6 @@ func TestQuorums(t *testing.T) {
 	assertQuorums(a.Multiply(a.Add(b)), [][]string{{"a"}, {"a", "b"}})
 	assertQuorums(a.Multiply(a.Add(b)), [][]string{{"a"}, {"a", "b"}})
 	assertQuorums(a.Add(b).Multiply(a.Add(c)), [][]string{{"a"}, {"a", "c"}, {"a", "b"}, {"b", "c"}})
-
 	expr, _ := DefChoose(1, []GenericExpr{a, b, c})
 	assertQuorums(expr, [][]string{{"a"}, {"b"}, {"c"}})
 
@@ -75,12 +74,12 @@ func TestQuorums(t *testing.T) {
 	assertQuorums(expr, [][]string{{"a", "b", "d", "e"}, {"a", "b", "d", "f"}, {"a", "b", "e", "f"},
 		{"a", "c", "d", "e"}, {"a", "c", "d", "f"}, {"a", "c", "e", "f"},
 		{"b", "c", "d", "e"}, {"b", "c", "d", "f"}, {"b", "c", "e", "f"},
-		{"a", "b", "a", "c"}, {"a", "b", "a", "e"}, {"a", "b", "c", "e"},
-		{"a", "c", "a", "c"}, {"a", "c", "a", "e"}, {"a", "c", "c", "e"},
-		{"b", "c", "a", "c"}, {"b", "c", "a", "e"}, {"b", "c", "c", "e"},
-		{"d", "e", "a", "c"}, {"d", "e", "a", "e"}, {"d", "e", "c", "e"},
+		{"a", "b", "c"}, {"a", "b", "e"}, {"a", "b", "c", "e"},
+		{"a", "c"}, {"a", "c", "e"}, {"a", "c", "e"},
+		{"b", "c", "a"}, {"b", "c", "a", "e"}, {"b", "c", "e"},
+		{"d", "e", "a", "c"}, {"d", "a", "e"}, {"d", "e", "c"},
 		{"d", "f", "a", "c"}, {"d", "f", "a", "e"}, {"d", "f", "c", "e"},
-		{"e", "f", "a", "c"}, {"e", "f", "a", "e"}, {"e", "f", "c", "e"}})
+		{"e", "f", "a", "c"}, {"e", "f", "a"}, {"e", "f", "c"}})
 }
 
 func TestIsQuorum(t *testing.T) {
@@ -139,7 +138,7 @@ func TestIsQuorum(t *testing.T) {
 }
 
 func TestResilience(t *testing.T) {
-	assertResilience := func(expr GenericExpr, n int) {
+	assertResilience := func(expr GenericExpr, n uint) {
 		assert.Assert(t, expr.Resilience() == n, fmt.Sprintf("Actual: %.10d | Expected  %.10d", expr.Resilience(), n))
 	}
 
@@ -172,9 +171,14 @@ func TestResilience(t *testing.T) {
 	expr, _ = DefChoose(4, []GenericExpr{a, b, c, d, e})
 	assertResilience(expr, 1)
 
-	expr, _ = DefChoose(4, []GenericExpr{a, b, c, d, e})
-	assertResilience(expr, 1)
+	expr, _ = DefChoose(2, []GenericExpr{a.Add(b).Add(c), d.Add(e), f})
+	assertResilience(expr, 2)
 
+	expr, _ = DefChoose(2, []GenericExpr{a.Multiply(b), a.Multiply(c), d})
+	assertResilience(expr, 0)
+
+	expr, _ = DefChoose(2, []GenericExpr{a.Add(b), a.Add(c), a.Add(d)})
+	assertResilience(expr, 2)
 }
 
 func TestDual(t *testing.T) {
@@ -193,6 +197,8 @@ func TestDual(t *testing.T) {
 	assertDual((a.Add(b)).Multiply(a.Add(a)), (a.Multiply(b)).Add(a.Multiply(a)))
 	assertDual((a.Add(a)).Multiply(a.Add(a)), (a.Multiply(a)).Add(a.Multiply(a)))
 	assertDual((a.Add(a.Multiply(b))).Add((c.Multiply(d)).Add(a)), (a.Multiply(a.Add(b))).Multiply((c.Add(d)).Multiply(a)))
+
+
 }
 
 func TestDupFree(t *testing.T) {

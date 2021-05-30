@@ -10,15 +10,19 @@ import (
 	"time"
 )
 
+type ExprSet = map[GenericExpr]bool
+
+type NodeSet = map[Node]bool
+
 type GenericExpr interface {
 	Add(expr GenericExpr) Or
 	Multiply(expr GenericExpr) And
-	Quorums() chan map[GenericExpr]bool
-	IsQuorum(map[GenericExpr]bool) bool
-	Nodes() map[Node]bool
-	NumLeaves() int
-	DupFreeMinFailures() int
-	Resilience() int
+	Quorums() chan ExprSet
+	IsQuorum(set ExprSet) bool
+	Nodes() NodeSet
+	NumLeaves() uint
+	DupFreeMinFailures() uint
+	Resilience() uint
 	DupFree() bool
 	String() string
 	Expr() string
@@ -79,11 +83,11 @@ func (n Node) Multiply(expr GenericExpr) And {
 	return andExpr(n, expr)
 }
 
-func (n Node) Quorums() chan map[GenericExpr]bool {
-	chnl := make(chan map[GenericExpr]bool)
+func (n Node) Quorums() chan ExprSet {
+	chnl := make(chan ExprSet)
 
 	go func() {
-		chnl <- map[GenericExpr]bool{n: true}
+		chnl <- ExprSet{n: true}
 		// Ensure that at the end of the loop we close the channel!
 		close(chnl)
 	}()
@@ -91,7 +95,7 @@ func (n Node) Quorums() chan map[GenericExpr]bool {
 	return chnl
 }
 
-func (n Node) IsQuorum(xs map[GenericExpr]bool) bool {
+func (n Node) IsQuorum(xs ExprSet) bool {
 	var found = false
 	for k := range xs {
 		if n.String() == k.String() {
@@ -102,34 +106,34 @@ func (n Node) IsQuorum(xs map[GenericExpr]bool) bool {
 	return found
 }
 
-func (n Node) Nodes() map[Node]bool {
-	return map[Node]bool{n: true}
+func (n Node) Nodes() NodeSet {
+	return NodeSet{n: true}
 }
 
-func (n Node) NumLeaves() int {
+func (n Node) NumLeaves() uint {
 	return 1
 }
 
-func (n Node) DupFreeMinFailures() int {
+func (n Node) DupFreeMinFailures() uint {
 	return 1
 }
 
-func (n Node) Resilience() int {
+func (n Node) Resilience() uint {
 	if n.DupFree() {
 		return n.DupFreeMinFailures() - 1
 	}
 
-	qs := make([]map[GenericExpr]bool, 0)
+	qs := make([]ExprSet, 0)
 
 	for q := range n.Quorums() {
 		qs = append(qs, q)
 	}
 
-	return minHittingSet(qs) - 1
+	return uint(minHittingSet(qs) - 1)
 }
 
 func (n Node) DupFree() bool {
-	return len(n.Nodes()) == n.NumLeaves()
+	return uint(len(n.Nodes())) == n.NumLeaves()
 }
 
 func (n Node) String() string {
@@ -161,8 +165,8 @@ func (e Or) Multiply(rhs GenericExpr) And {
 	return andExpr(e, rhs)
 }
 
-func (e Or) Quorums() chan map[GenericExpr]bool {
-	chnl := make(chan map[GenericExpr]bool)
+func (e Or) Quorums() chan ExprSet {
+	chnl := make(chan ExprSet)
 	go func() {
 		for _, es := range e.Es {
 			tmp := <-es.Quorums()
@@ -175,7 +179,7 @@ func (e Or) Quorums() chan map[GenericExpr]bool {
 	return chnl
 }
 
-func (e Or) IsQuorum(xs map[GenericExpr]bool) bool {
+func (e Or) IsQuorum(xs ExprSet) bool {
 	var found = false
 	for _, es := range e.Es {
 		if es.IsQuorum(xs) {
@@ -186,8 +190,8 @@ func (e Or) IsQuorum(xs map[GenericExpr]bool) bool {
 	return found
 }
 
-func (e Or) Nodes() map[Node]bool {
-	var final = make(map[Node]bool)
+func (e Or) Nodes() NodeSet {
+	var final = make(NodeSet)
 
 	for _, es := range e.Es {
 		for n := range es.Nodes() {
@@ -197,8 +201,8 @@ func (e Or) Nodes() map[Node]bool {
 	return final
 }
 
-func (e Or) NumLeaves() int {
-	total := 0
+func (e Or) NumLeaves() uint {
+	total := uint(0)
 
 	for _, es := range e.Es {
 		total += es.NumLeaves()
@@ -207,8 +211,8 @@ func (e Or) NumLeaves() int {
 	return total
 }
 
-func (e Or) DupFreeMinFailures() int {
-	total := 0
+func (e Or) DupFreeMinFailures() uint {
+	total := uint(0)
 
 	for _, es := range e.Es {
 		total += es.DupFreeMinFailures()
@@ -217,22 +221,22 @@ func (e Or) DupFreeMinFailures() int {
 	return total
 }
 
-func (e Or) Resilience() int {
+func (e Or) Resilience() uint {
 	if e.DupFree() {
 		return e.DupFreeMinFailures() - 1
 	}
 
-	qs := make([]map[GenericExpr]bool, 0)
+	qs := make([]ExprSet, 0)
 
 	for q := range e.Quorums() {
 		qs = append(qs, q)
 	}
 
-	return minHittingSet(qs) - 1
+	return uint(minHittingSet(qs) - 1)
 }
 
 func (e Or) DupFree() bool {
-	return len(e.Nodes()) == e.NumLeaves()
+	return uint(len(e.Nodes())) == e.NumLeaves()
 }
 
 func (e Or) String() string {
@@ -283,12 +287,12 @@ func (e And) Multiply(rhs GenericExpr) And {
 	return andExpr(e, rhs)
 }
 
-func (e And) Quorums() chan map[GenericExpr]bool {
-	chnl := make(chan map[GenericExpr]bool)
+func (e And) Quorums() chan ExprSet {
+	chnl := make(chan ExprSet)
 	flatQuorums := make([][]GenericExpr, 0)
 
 	for _, es := range e.Es {
-		tmp := make(map[GenericExpr]bool, 0)
+		tmp := make(ExprSet, 0)
 
 		for q := range es.Quorums() {
 			tmp = mergeGenericExprSets(tmp, q)
@@ -307,7 +311,7 @@ func (e And) Quorums() chan map[GenericExpr]bool {
 	return chnl
 }
 
-func (e And) IsQuorum(xs map[GenericExpr]bool) bool {
+func (e And) IsQuorum(xs ExprSet) bool {
 	var found = true
 	for _, es := range e.Es {
 		if !es.IsQuorum(xs) {
@@ -318,8 +322,8 @@ func (e And) IsQuorum(xs map[GenericExpr]bool) bool {
 	return found
 }
 
-func (e And) Nodes() map[Node]bool {
-	var final = make(map[Node]bool)
+func (e And) Nodes() NodeSet {
+	var final = make(NodeSet)
 
 	for _, es := range e.Es {
 		for n := range es.Nodes() {
@@ -329,8 +333,8 @@ func (e And) Nodes() map[Node]bool {
 	return final
 }
 
-func (e And) NumLeaves() int {
-	total := 0
+func (e And) NumLeaves() uint {
+	total := uint(0)
 
 	for _, es := range e.Es {
 		total += es.NumLeaves()
@@ -339,7 +343,7 @@ func (e And) NumLeaves() int {
 	return total
 }
 
-func (e And) DupFreeMinFailures() int {
+func (e And) DupFreeMinFailures() uint {
 	var exprs = e.Es
 	var min = exprs[0].DupFreeMinFailures()
 
@@ -351,7 +355,7 @@ func (e And) DupFreeMinFailures() int {
 	return min
 }
 
-func (e And) Resilience() int {
+func (e And) Resilience() uint {
 	if e.DupFree() {
 		return e.DupFreeMinFailures() - 1
 	}
@@ -362,11 +366,11 @@ func (e And) Resilience() int {
 		qs = append(qs, q)
 	}
 
-	return minHittingSet(qs) - 1
+	return uint(minHittingSet(qs) - 1)
 }
 
 func (e And) DupFree() bool {
-	return len(e.Nodes()) == e.NumLeaves()
+	return uint(len(e.Nodes())) == e.NumLeaves()
 }
 
 func (e And) String() string {
@@ -446,31 +450,34 @@ func (e Choose) Multiply(rhs GenericExpr) And {
 	return andExpr(e, rhs)
 }
 
-func (e Choose) Quorums() chan map[GenericExpr]bool {
-	chnl := make(chan map[GenericExpr]bool)
-	flatQuorums := make([][]GenericExpr, 0)
+func (e Choose) Quorums() chan ExprSet {
+	chnl := make(chan ExprSet)
+	sets := make([]ExprSet, 0)
 
 	for _, combo := range combinations(e.Es, e.K) {
+		combinedQuorums := make([][]interface{}, 0)
+		for _, c := range combo {
+			quorums := make([]interface{}, 0)
 
-		tmp := make(map[GenericExpr]bool, 0)
-
-		for _, qList := range combo {
-
-			for q := range qList.Quorums() {
-				tmp = mergeGenericExprSets(tmp, q)
+			for q := range c.Quorums() {
+				quorums = append(quorums, q)
 			}
+			combinedQuorums = append(combinedQuorums, quorums)
+
 		}
-
-		flatQuorums = append(flatQuorums, exprMapToList(tmp))
-
+		for _, s := range productInterfaces(combinedQuorums...) {
+			set := make(ExprSet)
+			for _, t := range s {
+				set = mergeGenericExprSets(set, t.(ExprSet))
+			}
+			sets = append(sets, set)
+		}
 	}
 
 	go func() {
-		for _, sets := range flatQuorums {
-			chnl <- exprListToMap(sets)
+		for _, set := range sets {
+			chnl <- set
 		}
-
-		// Ensure that at the end of the loop we close the channel!
 		close(chnl)
 	}()
 
@@ -487,8 +494,8 @@ func (e Choose) IsQuorum(xs map[GenericExpr]bool) bool {
 	return sum >= e.K
 }
 
-func (e Choose) Nodes() map[Node]bool {
-	var final = make(map[Node]bool)
+func (e Choose) Nodes() NodeSet {
+	var final = make(NodeSet)
 
 	for _, es := range e.Es {
 		for n := range es.Nodes() {
@@ -498,8 +505,8 @@ func (e Choose) Nodes() map[Node]bool {
 	return final
 }
 
-func (e Choose) NumLeaves() int {
-	total := 0
+func (e Choose) NumLeaves() uint {
+	total := uint(0)
 
 	for _, es := range e.Es {
 		total += es.NumLeaves()
@@ -508,13 +515,13 @@ func (e Choose) NumLeaves() int {
 	return total
 }
 
-func (e Choose) DupFreeMinFailures() int {
+func (e Choose) DupFreeMinFailures() uint {
 	var exprs = e.Es
 
 	var subFailures []int
 
 	for _, expr := range exprs {
-		subFailures = append(subFailures, expr.DupFreeMinFailures())
+		subFailures = append(subFailures, int(expr.DupFreeMinFailures()))
 	}
 
 	sort.Ints(subFailures)
@@ -526,10 +533,10 @@ func (e Choose) DupFreeMinFailures() int {
 		total += v
 	}
 
-	return total
+	return uint(total)
 }
 
-func (e Choose) Resilience() int {
+func (e Choose) Resilience() uint {
 	if e.DupFree() {
 		return e.DupFreeMinFailures() - 1
 	}
@@ -540,11 +547,11 @@ func (e Choose) Resilience() int {
 		qs = append(qs, q)
 	}
 
-	return minHittingSet(qs) - 1
+	return uint(minHittingSet(qs) - 1)
 }
 
 func (e Choose) DupFree() bool {
-	return len(e.Nodes()) == e.NumLeaves()
+	return uint(len(e.Nodes())) == e.NumLeaves()
 }
 
 func (e Choose) String() string {
@@ -620,6 +627,16 @@ func mergeGenericExprSets(maps ...map[GenericExpr]bool) map[GenericExpr]bool {
 
 // Cartesian product of lists, see: https://www.programmersought.com/article/95476401483/
 func product(sets ...[]GenericExpr) [][]GenericExpr {
+	nextIndex := func (ix []int, lens func(i int) int) {
+		for j := len(ix) - 1; j >= 0; j-- {
+			ix[j]++
+			if j == 0 || ix[j] < lens(j) {
+				return
+			}
+			ix[j] = 0
+		}
+	}
+
 	lens := func(i int) int { return len(sets[i]) }
 	var product [][]GenericExpr
 	for ix := make([]int, len(sets)); ix[0] < lens(0); nextIndex(ix, lens) {
@@ -631,6 +648,30 @@ func product(sets ...[]GenericExpr) [][]GenericExpr {
 		product = append(product, r)
 	}
 	return product
+}
+
+func productInterfaces(sets ...[]interface{}) [][]interface{} {
+	result := make([][]interface{}, 0)
+	nextIndex := func(ix []int, lens func(i int) int) {
+		for j := len(ix) - 1; j >= 0; j-- {
+			ix[j]++
+			if j == 0 || ix[j] < lens(j) {
+				return
+			}
+			ix[j] = 0
+		}
+	}
+	lens := func(i int) int { return len(sets[i]) }
+
+	for ix := make([]int, len(sets)); ix[0] < lens(0); nextIndex(ix, lens) {
+		var r []interface{}
+		for j, k := range ix {
+			r = append(r, sets[j][k])
+		}
+		result = append(result, r)
+	}
+
+	return result
 }
 
 // Returns N combinations of GenericExpr
@@ -658,17 +699,7 @@ func combinations(set []GenericExpr, n int) (subsets [][]GenericExpr) {
 	return subsets
 }
 
-func nextIndex(ix []int, lens func(i int) int) {
-	for j := len(ix) - 1; j >= 0; j-- {
-		ix[j]++
-		if j == 0 || ix[j] < lens(j) {
-			return
-		}
-		ix[j] = 0
-	}
-}
-
-func exprMapToList(input map[GenericExpr]bool) []GenericExpr {
+func exprMapToList(input ExprSet) []GenericExpr {
 	result := make([]GenericExpr, 0)
 
 	for k := range input {
@@ -678,7 +709,7 @@ func exprMapToList(input map[GenericExpr]bool) []GenericExpr {
 	return result
 }
 
-func exprListToMap(input []GenericExpr) map[GenericExpr]bool {
+func exprListToMap(input []GenericExpr) ExprSet {
 	result := make(map[GenericExpr]bool)
 
 	for _, k := range input {
@@ -688,7 +719,7 @@ func exprListToMap(input []GenericExpr) map[GenericExpr]bool {
 	return result
 }
 
-func minHittingSet(sets []map[GenericExpr]bool) int {
+func minHittingSet(sets []ExprSet) int {
 
 	xVars := make(map[GenericExpr]float64)
 	x := make([]float64, 0)
