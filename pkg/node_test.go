@@ -187,7 +187,7 @@ func TestDual(t *testing.T) {
 		assert.DeepEqual(t, x.Dual(), y)
 	}
 
-	a, b, c, d := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d")
+	a, b, c, d, e := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e")
 
 	assertDual(a, a)
 	assertDual(a.Add(b), a.Multiply(b))
@@ -198,6 +198,30 @@ func TestDual(t *testing.T) {
 	assertDual((a.Add(a)).Multiply(a.Add(a)), (a.Multiply(a)).Add(a.Multiply(a)))
 	assertDual((a.Add(a.Multiply(b))).Add((c.Multiply(d)).Add(a)), (a.Multiply(a.Add(b))).Multiply((c.Add(d)).Multiply(a)))
 
+	sut, _ := DefChoose(2, []GenericExpr{a, b, c})
+	expected, _ := DefChoose(2, []GenericExpr{a, b, c})
+
+	assertDual(sut, expected)
+
+	sut, _ = DefChoose(2, []GenericExpr{a.Add(b), c.Add(d), e})
+	expected, _ = DefChoose(2, []GenericExpr{a.Multiply(b), c.Multiply(d), e})
+
+	assertDual(sut, expected)
+
+	sut, _ = DefChoose(3, []GenericExpr{a, b, c, d, e})
+	expected, _ = DefChoose(3, []GenericExpr{a, b, c, d, e})
+
+	assertDual(sut, expected)
+
+	sut, _ = DefChoose(2, []GenericExpr{a, b, c, d, e})
+	expected, _ = DefChoose(4, []GenericExpr{a, b, c, d, e})
+
+	assertDual(sut, expected)
+
+	sut, _ = DefChoose(4, []GenericExpr{a, b, c, d, e})
+	expected, _ = DefChoose(2, []GenericExpr{a, b, c, d, e})
+
+	assertDual(sut, expected)
 
 }
 
@@ -210,7 +234,7 @@ func TestDupFree(t *testing.T) {
 		assert.Assert(t, expr.DupFree() == false)
 	}
 
-	a, b, c, d, e := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e")
+	a, b, c, d, e, f := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e"), DefNode("f")
 
 	assertDupFree(a)
 	assertDupFree(a.Add(b))
@@ -221,4 +245,19 @@ func TestDupFree(t *testing.T) {
 	assertNonDupFree(a.Multiply(a))
 	assertNonDupFree(a.Multiply(b.Add(a)))
 	assertNonDupFree((a.Add(b)).Multiply(c.Add(d.Multiply(a))))
+
+	expr, _ := DefChoose(2, []GenericExpr{a, b, c})
+	assertDupFree(expr)
+
+	expr, _ = DefChoose(2, []GenericExpr{a.Multiply(b), c, d.Add(e).Add(f)})
+	assertDupFree(expr)
+
+	expr, _ = DefChoose(3, []GenericExpr{a, b, c, d, e})
+	assertDupFree(expr)
+
+	expr, _ = DefChoose(2, []GenericExpr{a, b, a})
+	assertNonDupFree(expr)
+
+	expr, _ = DefChoose(3, []GenericExpr{a, b, c, d, a})
+	assertNonDupFree(expr)
 }

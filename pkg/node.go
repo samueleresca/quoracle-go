@@ -627,7 +627,7 @@ func mergeGenericExprSets(maps ...map[GenericExpr]bool) map[GenericExpr]bool {
 
 // Cartesian product of lists, see: https://www.programmersought.com/article/95476401483/
 func product(sets ...[]GenericExpr) [][]GenericExpr {
-	nextIndex := func (ix []int, lens func(i int) int) {
+	nextIndex := func(ix []int, lens func(i int) int) {
 		for j := len(ix) - 1; j >= 0; j-- {
 			ix[j]++
 			if j == 0 || ix[j] < lens(j) {
