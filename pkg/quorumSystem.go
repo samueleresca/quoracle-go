@@ -31,16 +31,35 @@ type StrategyOptions struct {
 	F             int
 }
 
-func DefQuorumSystem(reads GenericExpr, writes GenericExpr) QuorumSystem {
-	return QuorumSystem{}
+type lpVariable struct {
+	Name   string
+	Value  float64
+	UBound int
+	LBound int
+	Index  int
+}
+
+
+
+func DefQuorumSystem(reads GenericExpr, writes GenericExpr) (QuorumSystem, error) {
+	optionalWrites := reads.Dual()
+
+	for k := range writes.Quorums() {
+		if !optionalWrites.IsQuorum(k) {
+			return QuorumSystem{}, fmt.Errorf("Not all read quorums intersect all write quorums")
+		}
+	}
+
+	return QuorumSystem{Reads: reads, Writes: writes}, nil
+
 }
 
 func DefQuorumSystemWithReads(reads GenericExpr) QuorumSystem {
-	return QuorumSystem{}
+	return QuorumSystem{Reads: reads, Writes: reads.Dual()}
 }
 
 func DefQuorumSystemWithWrites(writes GenericExpr) QuorumSystem {
-	return QuorumSystem{}
+	return QuorumSystem{Reads: writes.Dual(), Writes: writes}
 }
 
 func (qs QuorumSystem) String() string {
@@ -167,6 +186,77 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 	return qs.loadOptimalStrategy(sb.Optimize, rq, wq, sb.ReadFraction.GetValue(),
 		sb.LoadLimit, sb.NetworkLimit, sb.LatencyLimit)
 }
+
+
+func (qs QuorumSystem) UniformStrategy(f int ) (Strategy, error){
+
+	readQuorums := make([]ExprSet, 0)
+	writeQuorums := make([]ExprSet, 0)
+
+
+	if f < 0 {
+		return Strategy{}, fmt.Errorf("f must be >= 0")
+	} else if f == 0 {
+		for q := range qs.ReadQuorums(){
+			readQuorums = append(readQuorums, q)
+		}
+
+		for q := range qs.WriteQuorums(){
+			writeQuorums = append(writeQuorums, q)
+		}
+	}
+
+	readQuorums = qs.minimize(readQuorums)
+	writeQuorums = qs.minimize(writeQuorums)
+
+	sigmaR := make([]SigmaRecord, 0)
+	sigmaW := make([]SigmaRecord, 0)
+
+	for _, q := range readQuorums{
+		sigmaR = append(sigmaR, SigmaRecord{q, 1/float64(len(readQuorums))})
+	}
+
+	for _, q := range writeQuorums{
+		sigmaW = append(sigmaW, SigmaRecord{ q, 1/float64(len(writeQuorums))})
+	}
+
+
+	return Strategy{SigmaR: Sigma{sigmaR}, SigmaW: Sigma{sigmaW}}, nil
+}
+
+func (qs QuorumSystem) minimize(sets []ExprSet) []ExprSet{
+
+	sort.Slice(sets, func(i, j int) bool {
+		return len(sets[i]) < len(sets[j])
+	})
+
+	 isSuperSet := func(e []ExprSet, x ExprSet) bool{
+			isSS := true
+			for _, y := range e {
+				for k := range x {
+					if _, exists := y[k]; !exists {
+						isSS = false
+					}
+				}
+			}
+			return isSS
+	}
+
+	minimalElements := make([]ExprSet, 0)
+
+	for _, v := range sets {
+		if !(isSuperSet(minimalElements, v)){
+			minimalElements = append(minimalElements, v)
+		}
+	}
+
+	return minimalElements
+}
+
+func (qs QuorumSystem) fResilientQuorums(f int, xs []Node, e GenericExpr){
+
+}
+
 func (qs QuorumSystem) readQuorumLatency(quorum []Node) (*int, error) {
 	return qs.quorumLatency(quorum, qs.IsReadQuorum)
 }
@@ -485,25 +575,24 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	return &Strategy{}, nil
 }
 
-type lpVariable struct {
-	Name   string
-	Value  float64
-	UBound int
-	LBound int
-	Index  int
-}
 
+
+//Strategy
 type Strategy struct {
 	Qs                QuorumSystem
-	SigmaR            []Sigma
-	SigmaW            []Sigma
+	SigmaR            Sigma
+	SigmaW            Sigma
 	XReadProbability  map[Node]float64
 	XWriteProbability map[Node]float64
 }
 
-type Sigma struct {
-	Quorum      GenericExpr
+
+type SigmaRecord struct{
+	Quorum    ExprSet
 	Probability Probability
+}
+type Sigma struct {
+	Values []SigmaRecord
 }
 
 func (s Strategy) String() string {
@@ -559,13 +648,13 @@ func (s Strategy) NetworkLoad(rf *Distribution, wf *Distribution) (*float64, err
 	}
 
 	reads := 0.0
-	for _, sigma := range s.SigmaR {
-		reads += frsum * float64(len(sigma.Quorum.GetEs())) * sigma.Probability
+	for _, sigma := range s.SigmaR.Values {
+		reads += frsum * float64(len(sigma.Quorum)) * sigma.Probability
 	}
 
 	writes := 0.0
-	for _, sigma := range s.SigmaW {
-		writes += (1 - frsum) * float64(len(sigma.Quorum.GetEs())) * sigma.Probability
+	for _, sigma := range s.SigmaW.Values {
+		writes += (1 - frsum) * float64(len(sigma.Quorum)) * sigma.Probability
 	}
 
 	total := reads + writes
@@ -586,27 +675,27 @@ func (s Strategy) Latency(rf *Distribution, wf *Distribution) (*float64, error) 
 
 	reads := 0.0
 
-	for _, rq := range s.SigmaR {
+	for _, rq := range s.SigmaR.Values {
 		nodes := make([]Node, 0)
 
-		for n := range rq.Quorum.Nodes() {
-			nodes = append(nodes, n)
+		for n := range rq.Quorum {
+			nodes = append(nodes, s.Qs.Node(n.String()))
 		}
-		v, _ := s.Qs.readQuorumLatency(nodes)
 
+		v, _ := s.Qs.readQuorumLatency(nodes)
 		reads += float64(*v) * rq.Probability
 	}
 
 	writes := 0.0
 
-	for _, wq := range s.SigmaW {
+	for _, wq := range s.SigmaW.Values {
 		nodes := make([]Node, 0)
 
-		for n := range wq.Quorum.Nodes() {
-			nodes = append(nodes, n)
+		for n := range wq.Quorum {
+			nodes = append(nodes, s.Qs.Node(n.String()))
 		}
-		v, _ := s.Qs.readQuorumLatency(nodes)
 
+		v, _ := s.Qs.writeQuorumLatency(nodes)
 		writes += float64(*v) * wq.Probability
 	}
 
@@ -685,23 +774,24 @@ func (s Strategy) nodeThroughput(node Node, fr float64) float64 {
 	return capacity * (fr*s.XReadProbability[node] + fw*s.XWriteProbability[node])
 }
 
-type NodeSorter struct {
+// Sorter
+type nodeSorter struct {
 	nodes []Node
 	by    func(p1, p2 *Node) bool // Closure used in the Less method.
 }
 
 // Len is part of sort.Interface.
-func (ns *NodeSorter) Len() int {
+func (ns *nodeSorter) Len() int {
 	return len(ns.nodes)
 }
 
 // Swap is part of sort.Interface.
-func (ns *NodeSorter) Swap(i, j int) {
+func (ns *nodeSorter) Swap(i, j int) {
 	ns.nodes[i], ns.nodes[j] = ns.nodes[j], ns.nodes[i]
 }
 
 // Less is part of sort.Interface. It is implemented by calling the "by" closure in the sorter.
-func (ns *NodeSorter) Less(i, j int) bool {
+func (ns *nodeSorter) Less(i, j int) bool {
 	return ns.by(&ns.nodes[i], &ns.nodes[j])
 }
 
@@ -709,9 +799,10 @@ type By func(p1, p2 *Node) bool
 
 // Sort is a method on the function type, By, that sorts the argument slice according to the function.
 func (by By) Sort(nodes []Node) {
-	ps := &NodeSorter{
+	ps := &nodeSorter{
 		nodes: nodes,
 		by:    by, // The Sort method's receiver is the function (closure) that defines the sort order.
 	}
 	sort.Sort(ps)
 }
+
