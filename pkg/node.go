@@ -14,9 +14,14 @@ type ExprSet = map[GenericExpr]bool
 
 type NodeSet = map[Node]bool
 
-type GenericExpr interface {
+type ExprOperator interface {
 	Add(expr GenericExpr) Or
 	Multiply(expr GenericExpr) And
+	Expr() string
+}
+
+type GenericExpr interface {
+	ExprOperator
 	Quorums() chan ExprSet
 	IsQuorum(set ExprSet) bool
 	Nodes() NodeSet
@@ -25,7 +30,6 @@ type GenericExpr interface {
 	Resilience() uint
 	DupFree() bool
 	String() string
-	Expr() string
 	GetEs() []GenericExpr
 	Dual() GenericExpr
 }
