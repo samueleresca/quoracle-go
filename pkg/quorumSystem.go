@@ -671,8 +671,8 @@ func (s Strategy) GetReadQuorum() map[GenericExpr]bool {
 
 	criteria := make([]wr.Choice, 0)
 
-	for _, sigmaRecord := range s.SigmaR.Values{
-		criteria = append(criteria, wr.Choice{ sigmaRecord.Quorum, uint(sigmaRecord.Probability * 10)})
+	for _, sigmaRecord := range s.SigmaR.Values {
+		criteria = append(criteria, wr.Choice{sigmaRecord.Quorum, uint(sigmaRecord.Probability * 10)})
 	}
 
 	chooser, _ := wr.NewChooser(criteria...)
@@ -687,8 +687,8 @@ func (s Strategy) GetWriteQuorum() map[GenericExpr]bool {
 
 	criteria := make([]wr.Choice, 0)
 
-	for _, sigmaRecord := range s.SigmaW.Values{
-		criteria = append(criteria, wr.Choice{ sigmaRecord.Quorum, uint(sigmaRecord.Probability * 10)})
+	for _, sigmaRecord := range s.SigmaW.Values {
+		criteria = append(criteria, wr.Choice{sigmaRecord.Quorum, uint(sigmaRecord.Probability * 10)})
 	}
 
 	chooser, _ := wr.NewChooser(criteria...)
