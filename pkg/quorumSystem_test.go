@@ -247,4 +247,32 @@ func TestMakeStrategy(t *testing.T) {
 		{map[GenericExpr]bool{b: true, c: true}, 0.25},
 		{map[GenericExpr]bool{b: true, d: true}, 0.25}})
 
+
+
+	_, err :=
+		DefQuorumSystemWithReads(a.Multiply(b).Add(c.Multiply(d))).MakeStrategy(
+			Sigma{Values: []SigmaRecord{
+				{map[GenericExpr]bool{a: true, b: true}, -1},
+				{map[GenericExpr]bool{c: true, d: true}, 1}}},
+			Sigma{Values: []SigmaRecord{
+				{map[GenericExpr]bool{a: true, c: true}, 1},
+				{map[GenericExpr]bool{a: true, d: true}, 1},
+				{map[GenericExpr]bool{b: true, c: true}, 1},
+				{map[GenericExpr]bool{b: true, d: true}, 1}}})
+
+	assert.Assert(t, err != nil)
+
+
+	_, err =
+		DefQuorumSystemWithReads(a.Multiply(b).Add(c.Multiply(d))).MakeStrategy(
+			Sigma{Values: []SigmaRecord{
+				{map[GenericExpr]bool{a: true}, 1},
+				{map[GenericExpr]bool{c: true, d: true}, 1}}},
+			Sigma{Values: []SigmaRecord{
+				{map[GenericExpr]bool{a: true, c: true}, 1},
+				{map[GenericExpr]bool{a: true, d: true}, 1},
+				{map[GenericExpr]bool{b: true, c: true}, 1},
+				{map[GenericExpr]bool{b: true, d: true}, 1}}})
+
+	assert.Assert(t, err != nil)
 }
