@@ -219,18 +219,73 @@ func (qs QuorumSystem) UniformStrategy(f int) (Strategy, error) {
 	return Strategy{SigmaR: Sigma{sigmaR}, SigmaW: Sigma{sigmaW}}, nil
 }
 
+func (qs QuorumSystem) MakeStrategy(sigmaR Sigma, sigmaW Sigma) (Strategy, error) {
+	normalizedSigmaR := make([]SigmaRecord, 0)
+	normalizedSigmaW := make([]SigmaRecord, 0)
+
+	allCheck := func(records []SigmaRecord, checkCondition func(record SigmaRecord) bool) bool {
+		for _, r := range records {
+			if !checkCondition(r) {
+				return false
+			}
+		}
+		return true
+	}
+
+	if !allCheck(sigmaR.Values, func(r SigmaRecord) bool { return r.Probability < 0 }) {
+		return Strategy{}, fmt.Errorf("SigmaR has negative weights")
+	}
+
+	if !allCheck(sigmaW.Values, func(r SigmaRecord) bool { return r.Probability < 0 }) {
+		return Strategy{}, fmt.Errorf("SigmaW has negative weights")
+	}
+
+	if !allCheck(sigmaR.Values, func(r SigmaRecord) bool { return qs.IsReadQuorum(r.Quorum) }) {
+		return Strategy{}, fmt.Errorf("SigmaR has non-read quorums")
+	}
+
+	if !allCheck(sigmaW.Values, func(r SigmaRecord) bool { return qs.IsWriteQuorum(r.Quorum) }) {
+		return Strategy{}, fmt.Errorf("SigmaW has non-write quorums")
+	}
+
+	totalSigmaR := 0.0
+
+	for _, value := range sigmaR.Values {
+		totalSigmaR += value.Probability
+	}
+
+	totalSigmaW := 0.0
+
+	for _, value := range sigmaW.Values {
+		totalSigmaW += value.Probability
+	}
+
+	for _, value := range sigmaR.Values {
+		normalizedSigmaR = append(normalizedSigmaR,
+			SigmaRecord{Quorum: value.Quorum, Probability: value.Probability / totalSigmaR})
+	}
+
+	for _, value := range sigmaW.Values {
+		normalizedSigmaW = append(normalizedSigmaW,
+			SigmaRecord{Quorum: value.Quorum, Probability: value.Probability / totalSigmaW})
+	}
+
+	return Strategy{SigmaR: Sigma{Values: normalizedSigmaR}, SigmaW: Sigma{Values: normalizedSigmaW}}, nil
+}
+
 func (qs QuorumSystem) minimize(sets []ExprSet) []ExprSet {
 
 	sort.Slice(sets, func(i, j int) bool {
 		return len(sets[i]) < len(sets[j])
 	})
 
-	isSuperSet := func(e []ExprSet, x ExprSet) bool {
-		isSS := true
+	isSuperSet := func(x ExprSet, e []ExprSet) bool {
+		isSS := false
+
 		for _, y := range e {
 			for k := range x {
-				if _, exists := y[k]; !exists {
-					isSS = false
+				if _, exists := y[k]; exists {
+					isSS = true
 				}
 			}
 		}
@@ -240,7 +295,7 @@ func (qs QuorumSystem) minimize(sets []ExprSet) []ExprSet {
 	minimalElements := make([]ExprSet, 0)
 
 	for _, v := range sets {
-		if !(isSuperSet(minimalElements, v)) {
+		if !(isSuperSet(v, minimalElements)) {
 			minimalElements = append(minimalElements, v)
 		}
 	}

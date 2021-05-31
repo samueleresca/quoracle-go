@@ -41,3 +41,32 @@ func TestInit(t *testing.T) {
 	assert.Error(t, err, "Not all read quorums intersect all write quorums")
 
 }
+
+func TestUniformStrategy(t *testing.T) {
+
+	assertSigma := func(actual []SigmaRecord, expected []SigmaRecord) {
+		assert.DeepEqual(t, actual, expected)
+	}
+
+	a := DefNode("a")
+
+	sigma, _ := DefQuorumSystemWithReads(a).UniformStrategy(0)
+
+	assertSigma(sigma.SigmaR.Values, []SigmaRecord{{map[GenericExpr]bool{a: true}, 1.0}})
+	assertSigma(sigma.SigmaW.Values, []SigmaRecord{{map[GenericExpr]bool{a: true}, 1.0}})
+
+	sigma, _ = DefQuorumSystemWithReads(a.Add(a)).UniformStrategy(0)
+
+	assertSigma(sigma.SigmaR.Values, []SigmaRecord{{map[GenericExpr]bool{a: true}, 1.0}})
+	assertSigma(sigma.SigmaW.Values, []SigmaRecord{{map[GenericExpr]bool{a: true}, 1.0}})
+
+	sigma, _ = DefQuorumSystemWithReads(a.Multiply(a)).UniformStrategy(0)
+
+	assertSigma(sigma.SigmaR.Values, []SigmaRecord{{map[GenericExpr]bool{a: true}, 1.0}})
+	assertSigma(sigma.SigmaW.Values, []SigmaRecord{{map[GenericExpr]bool{a: true}, 1.0}})
+
+	sigma, _ = DefQuorumSystemWithReads(a.Add(a.Multiply(a))).UniformStrategy(0)
+
+	assertSigma(sigma.SigmaR.Values, []SigmaRecord{{map[GenericExpr]bool{a: true}, 1.0}})
+	assertSigma(sigma.SigmaW.Values, []SigmaRecord{{map[GenericExpr]bool{a: true}, 1.0}})
+}
