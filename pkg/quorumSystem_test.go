@@ -36,7 +36,7 @@ func TestInit(t *testing.T) {
 
 		assert.Assert(t, reflect.DeepEqual(actual, expected) == true, fmt.Sprintf("assertQuorums - Actual: %v | Expected  %v", actual, expected))
 	}
-	a, b, c := DefNode("a"), DefNode("b"), DefNode("c") ///, DefNode("d")
+	a, b, c := DefNode("a"), DefNode("b"), DefNode("c")
 
 	qs := DefQuorumSystemWithReads(a.Add(b))
 	assertQuorums(qs.Reads, [][]string{{"a"}, {"b"}})

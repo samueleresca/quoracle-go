@@ -3,8 +3,11 @@ package pkg
 import (
 	"fmt"
 	"github.com/lanl/clp"
+	wr "github.com/mroth/weightedrand"
 	"math"
+	"math/rand"
 	"sort"
+	"time"
 )
 
 type OptimizeType string
@@ -662,12 +665,36 @@ func (s Strategy) String() string {
 	return ""
 }
 
-func (s Strategy) GetReadQuorum() []Node {
-	return []Node{}
+func (s Strategy) GetReadQuorum() map[GenericExpr]bool {
+
+	rand.Seed(time.Now().UTC().UnixNano()) // always seed random!
+
+	criteria := make([]wr.Choice, 0)
+
+	for _, sigmaRecord := range s.SigmaR.Values{
+		criteria = append(criteria, wr.Choice{ sigmaRecord.Quorum, uint(sigmaRecord.Probability * 10)})
+	}
+
+	chooser, _ := wr.NewChooser(criteria...)
+	result := chooser.Pick().(ExprSet)
+
+	return result
 }
 
-func (s Strategy) GetWriteQuorum() []Node {
-	return []Node{}
+func (s Strategy) GetWriteQuorum() map[GenericExpr]bool {
+
+	rand.Seed(time.Now().UTC().UnixNano()) // always seed random!
+
+	criteria := make([]wr.Choice, 0)
+
+	for _, sigmaRecord := range s.SigmaW.Values{
+		criteria = append(criteria, wr.Choice{ sigmaRecord.Quorum, uint(sigmaRecord.Probability * 10)})
+	}
+
+	chooser, _ := wr.NewChooser(criteria...)
+	result := chooser.Pick().(ExprSet)
+
+	return result
 }
 
 func (s Strategy) Load(rf *Distribution, wf *Distribution) (*float64, error) {
