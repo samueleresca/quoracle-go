@@ -139,7 +139,7 @@ func TestIsQuorum(t *testing.T) {
 
 func TestResilience(t *testing.T) {
 	assertResilience := func(expr GenericExpr, n uint) {
-		assert.Assert(t, expr.Resilience() == n, fmt.Sprintf("Actual: %.10d | Expected  %.10d", expr.Resilience(), n))
+		assert.Assert(t, expr.Resilience() == n, fmt.Sprintf("Actual: %d | Expected  %d", expr.Resilience(), n))
 	}
 
 	a, b, c, d, e, f := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e"), DefNode("f")

@@ -232,11 +232,11 @@ func (qs QuorumSystem) MakeStrategy(sigmaR Sigma, sigmaW Sigma) (Strategy, error
 		return true
 	}
 
-	if !allCheck(sigmaR.Values, func(r SigmaRecord) bool { return r.Probability < 0 }) {
+	if !allCheck(sigmaR.Values, func(r SigmaRecord) bool { return r.Probability >= 0 }) {
 		return Strategy{}, fmt.Errorf("SigmaR has negative weights")
 	}
 
-	if !allCheck(sigmaW.Values, func(r SigmaRecord) bool { return r.Probability < 0 }) {
+	if !allCheck(sigmaW.Values, func(r SigmaRecord) bool { return r.Probability >= 0 }) {
 		return Strategy{}, fmt.Errorf("SigmaW has negative weights")
 	}
 
@@ -244,7 +244,7 @@ func (qs QuorumSystem) MakeStrategy(sigmaR Sigma, sigmaW Sigma) (Strategy, error
 		return Strategy{}, fmt.Errorf("SigmaR has non-read quorums")
 	}
 
-	if !allCheck(sigmaW.Values, func(r SigmaRecord) bool { return qs.IsWriteQuorum(r.Quorum) }) {
+	if !allCheck(sigmaW.Values, func(w SigmaRecord) bool { return qs.IsWriteQuorum(w.Quorum) }) {
 		return Strategy{}, fmt.Errorf("SigmaW has non-write quorums")
 	}
 
@@ -279,23 +279,39 @@ func (qs QuorumSystem) minimize(sets []ExprSet) []ExprSet {
 		return len(sets[i]) < len(sets[j])
 	})
 
-	isSuperSet := func(x ExprSet, e []ExprSet) bool {
-		isSS := false
+	isSuperSet := func(x ExprSet, e ExprSet) bool {
+		set := make(map[GenericExpr]int)
+		for k := range x {
+			set[k] += 1
+		}
 
-		for _, y := range e {
-			for k := range x {
-				if _, exists := y[k]; exists {
-					isSS = true
-				}
+		for k := range e {
+			if count, found := set[k]; !found {
+				return false
+			} else if count < 1 {
+				return false
+			} else {
+				set[k] = count - 1
 			}
 		}
-		return isSS
+
+		return true
+	}
+
+	isAnySuperSet := func(x ExprSet, e []ExprSet) bool {
+		for _, expr := range e {
+			if isSuperSet(x, expr) {
+				return true
+			}
+		}
+
+		return false
 	}
 
 	minimalElements := make([]ExprSet, 0)
 
 	for _, v := range sets {
-		if !(isSuperSet(v, minimalElements)) {
+		if !(isAnySuperSet(v, minimalElements)) {
 			minimalElements = append(minimalElements, v)
 		}
 	}
