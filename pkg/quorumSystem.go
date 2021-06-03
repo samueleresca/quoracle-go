@@ -128,6 +128,25 @@ func (qs QuorumSystem) Latency(strategyOptions StrategyOptions) (*float64, error
 	return strategy.Latency(&strategyOptions.ReadFraction, &strategyOptions.WriteFraction)
 }
 
+func (qs QuorumSystem) NetworkLoad(strategyOptions StrategyOptions) (*float64, error) {
+
+	init := func(options *StrategyOptions) error {
+		options.Optimize = strategyOptions.Optimize
+		options.LatencyLimit = strategyOptions.LatencyLimit
+		options.F = strategyOptions.F
+		options.NetworkLimit = strategyOptions.NetworkLimit
+		options.ReadFraction = strategyOptions.ReadFraction
+		options.WriteFraction = strategyOptions.WriteFraction
+
+		return nil
+	}
+	strategy, err := qs.Strategy(init)
+
+	fmt.Println(err)
+
+	return strategy.NetworkLoad(&strategyOptions.ReadFraction, &strategyOptions.WriteFraction)
+}
+
 func (qs QuorumSystem) ReadQuorums() chan map[GenericExpr]bool {
 	return qs.Reads.Quorums()
 }

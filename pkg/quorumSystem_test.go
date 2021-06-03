@@ -289,6 +289,8 @@ func TestOptimalStrategy(t *testing.T) {
 	}
 
 	latency, _ := qs.Latency(strategyOptions)
-
 	assert.Assert(t, *latency == 2)
+
+	networkLoad, _ := qs.NetworkLoad(strategyOptions)
+	assert.Assert(t, *networkLoad == 2)
 }
