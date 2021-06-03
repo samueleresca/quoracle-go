@@ -507,15 +507,15 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		// initializes target array
 		for _, v := range readQuorumVars {
 			vars = append(vars, 1.0)
-			b := [][2]float64{{float64(v.LBound)}, {float64(v.UBound)}}
-			constr = append(constr, b...)
+			b := [2]float64{v.LBound, v.UBound}
+			constr = append(constr, b)
 
 		}
 		// add constraints 0 <= q <= 1
 		for _, v := range writeQuorumVars {
 			vars = append(vars, 1.0)
-			b := [][2]float64{{float64(v.LBound)}, {float64(v.UBound)}}
-			constr = append(constr, b...)
+			b := [2]float64{v.LBound, v.UBound}
+			constr = append(constr, b)
 		}
 
 		tmp := make([]float64, 0)

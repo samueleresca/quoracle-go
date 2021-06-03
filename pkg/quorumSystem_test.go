@@ -291,6 +291,11 @@ func TestOptimalStrategy(t *testing.T) {
 	latency, _ := qs.Latency(strategyOptions)
 	assert.Assert(t, *latency == 2)
 
+	strategyOptions = StrategyOptions{
+		Optimize: Network,
+		ReadFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
 	networkLoad, _ := qs.NetworkLoad(strategyOptions)
 	assert.Assert(t, *networkLoad == 2)
 }
