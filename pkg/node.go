@@ -7,7 +7,6 @@ import (
 	"math/bits"
 	"sort"
 	"strings"
-	"time"
 )
 
 type ExprSet = map[GenericExpr]bool
@@ -37,45 +36,30 @@ type GenericExpr interface {
 // Node in a quorum
 type Node struct {
 	Name          string
-	ReadCapacity  *float64
-	WriteCapacity *float64
-	Latency       *int
+	ReadCapacity  *uint
+	WriteCapacity *uint
+	Latency       *uint
 }
 
 func DefNode(name string) Node {
 	node := Node{}
 	node.Name = name
 
-	initialValue := 1.0
+	initialValue := uint(1)
 	node.ReadCapacity = &initialValue
 	node.WriteCapacity = &initialValue
 
 	return node
 }
 
-func DefNodeWithCapacity(name string, capacity *float64, readCapacity *float64, writeCapacity *float64, latency *time.Time) Node {
+func DefNodeWithCapacity(name string, readCapacity uint, writeCapacity uint, latency uint) Node {
 	node := Node{}
+
 	node.Name = name
+	node.ReadCapacity = &readCapacity
+	node.WriteCapacity = &writeCapacity
+	node.Latency = &latency
 
-	if capacity == nil && readCapacity == nil && writeCapacity == nil {
-		initialValue := 1.0
-		node.ReadCapacity = &initialValue
-		node.WriteCapacity = &initialValue
-
-	} else if capacity != nil && readCapacity == nil && writeCapacity == nil {
-		node.ReadCapacity = capacity
-		node.WriteCapacity = capacity
-	} else if capacity == nil && readCapacity != nil && writeCapacity != nil {
-		node.ReadCapacity = readCapacity
-		node.WriteCapacity = writeCapacity
-	} else {
-		panic("You must specify capacity or (read_capacity 'and write_capacity)")
-	}
-
-	if latency == nil {
-		oneSec := time.Date(0, 0, 0, 0, 0, 1, 0, nil)
-		latency = &oneSec
-	}
 	return node
 }
 

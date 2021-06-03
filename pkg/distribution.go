@@ -25,19 +25,19 @@ func (qd QuorumDistribution) IsSingleValue() bool {
 
 func canonicalizeRW(readFraction *Distribution, writeFraction *Distribution) (map[Fraction]Probability, error) {
 
-	if readFraction == nil && writeFraction == nil {
+	if *readFraction == nil && *writeFraction == nil {
 		return nil, fmt.Errorf("Either readFraction or writeFraction must be given")
 	}
 
-	if readFraction != nil && writeFraction != nil {
+	if *readFraction != nil && *writeFraction != nil {
 		return nil, fmt.Errorf("Only one of read_fraction or write_fraction can be given")
 	}
 
-	if readFraction != nil {
+	if *readFraction != nil {
 		return canonicalize(readFraction)
 	}
 
-	if writeFraction != nil {
+	if *writeFraction != nil {
 		cDist, err := canonicalize(writeFraction)
 		if err != nil {
 			return nil, err

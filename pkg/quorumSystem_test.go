@@ -273,3 +273,22 @@ func TestMakeStrategy(t *testing.T) {
 
 	assert.Assert(t, err != nil)
 }
+
+func TestOptimalStrategy(t *testing.T) {
+
+	a, b, c, d :=
+		DefNodeWithCapacity("a", 2, 1, 1), DefNodeWithCapacity("b", 2, 1, 2),
+		DefNodeWithCapacity("c", 2, 1, 3), DefNodeWithCapacity("d", 2, 1, 4)
+
+	qs := DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
+
+	strategyOptions := StrategyOptions{
+		Optimize: Latency,
+		ReadFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+
+	latency, _ := qs.Latency(strategyOptions)
+
+	assert.Assert(t, *latency == 2)
+}
