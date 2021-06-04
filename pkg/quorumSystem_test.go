@@ -514,3 +514,53 @@ func TestOptimalStrategyLatency(t *testing.T) {
 	latency, _ = qs.Latency(strategyOptions)
 	assert.Assert(t, math.Abs(*latency-3) <= float64EqualityThreshold)
 }
+
+func TestOptimalStrategyIllegalSpecs(t *testing.T){
+	a, b, c, d :=
+		DefNodeWithCapacity("a", 2, 1, 1), DefNodeWithCapacity("b", 2, 1, 2),
+		DefNodeWithCapacity("c", 2, 1, 3), DefNodeWithCapacity("d", 2, 1, 4)
+
+	qs := DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
+
+	loadLimit := 1.0
+	strategyOptions := StrategyOptions{
+		Optimize: Load,
+		LoadLimit: &loadLimit,
+		ReadFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+
+
+	_, err := qs.Load(strategyOptions)
+
+	assert.Assert(t, err.Error() == "a load limit cannot be set when optimizing for load")
+
+
+	networkLimit := 1.0
+	strategyOptions = StrategyOptions{
+		Optimize: Network,
+		NetworkLimit: &networkLimit,
+		ReadFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+
+
+	_, err = qs.Load(strategyOptions)
+
+	assert.Assert(t, err.Error() == "a network limit cannot be set when optimizing for network")
+
+
+	latencyLimit := 1.0
+	strategyOptions = StrategyOptions{
+		Optimize: Latency,
+		LatencyLimit: &latencyLimit,
+		ReadFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+
+
+	_, err = qs.Load(strategyOptions)
+
+	assert.Assert(t, err.Error() == "a latency limit cannot be set when optimizing for latency")
+
+}
