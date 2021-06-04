@@ -26,7 +26,7 @@ type GenericExpr interface {
 	Nodes() NodeSet
 	NumLeaves() uint
 	DupFreeMinFailures() uint
-	Resilience() uint
+	Resilience() float64
 	DupFree() bool
 	String() string
 	GetEs() []GenericExpr
@@ -106,9 +106,9 @@ func (n Node) DupFreeMinFailures() uint {
 	return 1
 }
 
-func (n Node) Resilience() uint {
+func (n Node) Resilience() float64 {
 	if n.DupFree() {
-		return n.DupFreeMinFailures() - 1
+		return float64(n.DupFreeMinFailures() - 1)
 	}
 
 	qs := make([]ExprSet, 0)
@@ -117,7 +117,7 @@ func (n Node) Resilience() uint {
 		qs = append(qs, q)
 	}
 
-	return uint(minHittingSet(qs) - 1)
+	return float64(minHittingSet(qs) - 1)
 }
 
 func (n Node) DupFree() bool {
@@ -209,9 +209,9 @@ func (e Or) DupFreeMinFailures() uint {
 	return total
 }
 
-func (e Or) Resilience() uint {
+func (e Or) Resilience() float64 {
 	if e.DupFree() {
-		return e.DupFreeMinFailures() - 1
+		return float64(e.DupFreeMinFailures() - 1)
 	}
 
 	qs := make([]ExprSet, 0)
@@ -220,7 +220,7 @@ func (e Or) Resilience() uint {
 		qs = append(qs, q)
 	}
 
-	return uint(minHittingSet(qs) - 1)
+	return float64(minHittingSet(qs) - 1)
 }
 
 func (e Or) DupFree() bool {
@@ -343,9 +343,9 @@ func (e And) DupFreeMinFailures() uint {
 	return min
 }
 
-func (e And) Resilience() uint {
+func (e And) Resilience() float64 {
 	if e.DupFree() {
-		return e.DupFreeMinFailures() - 1
+		return float64(e.DupFreeMinFailures() - 1)
 	}
 
 	qs := make([]map[GenericExpr]bool, 0)
@@ -354,7 +354,7 @@ func (e And) Resilience() uint {
 		qs = append(qs, q)
 	}
 
-	return uint(minHittingSet(qs) - 1)
+	return float64(minHittingSet(qs) - 1)
 }
 
 func (e And) DupFree() bool {
@@ -524,9 +524,9 @@ func (e Choose) DupFreeMinFailures() uint {
 	return uint(total)
 }
 
-func (e Choose) Resilience() uint {
+func (e Choose) Resilience() float64 {
 	if e.DupFree() {
-		return e.DupFreeMinFailures() - 1
+		return float64(e.DupFreeMinFailures() - 1)
 	}
 
 	qs := make([]map[GenericExpr]bool, 0)
@@ -535,7 +535,7 @@ func (e Choose) Resilience() uint {
 		qs = append(qs, q)
 	}
 
-	return uint(minHittingSet(qs) - 1)
+	return float64(minHittingSet(qs) - 1)
 }
 
 func (e Choose) DupFree() bool {

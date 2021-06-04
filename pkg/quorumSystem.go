@@ -128,6 +128,25 @@ func (qs QuorumSystem) Latency(strategyOptions StrategyOptions) (*float64, error
 	return strategy.Latency(&strategyOptions.ReadFraction, &strategyOptions.WriteFraction)
 }
 
+func (qs QuorumSystem) Load(strategyOptions StrategyOptions) (*float64, error) {
+
+	init := func(options *StrategyOptions) error {
+		options.Optimize = strategyOptions.Optimize
+		options.LatencyLimit = strategyOptions.LatencyLimit
+		options.F = strategyOptions.F
+		options.NetworkLimit = strategyOptions.NetworkLimit
+		options.ReadFraction = strategyOptions.ReadFraction
+		options.WriteFraction = strategyOptions.WriteFraction
+
+		return nil
+	}
+	strategy, err := qs.Strategy(init)
+
+	fmt.Println(err)
+
+	return strategy.Load(&strategyOptions.ReadFraction, &strategyOptions.WriteFraction)
+}
+
 func (qs QuorumSystem) NetworkLoad(strategyOptions StrategyOptions) (*float64, error) {
 
 	init := func(options *StrategyOptions) error {
@@ -146,7 +165,6 @@ func (qs QuorumSystem) NetworkLoad(strategyOptions StrategyOptions) (*float64, e
 
 	return strategy.NetworkLoad(&strategyOptions.ReadFraction, &strategyOptions.WriteFraction)
 }
-
 func (qs QuorumSystem) ReadQuorums() chan map[GenericExpr]bool {
 	return qs.Reads.Quorums()
 }
@@ -194,7 +212,7 @@ func (qs QuorumSystem) Elements() map[string]bool {
 	return r
 }
 
-func (qs QuorumSystem) Resilience() uint {
+func (qs QuorumSystem) Resilience() float64 {
 	rr := qs.ReadResilience()
 	ww := qs.WriteResilience()
 
@@ -205,11 +223,11 @@ func (qs QuorumSystem) Resilience() uint {
 	return ww
 }
 
-func (qs QuorumSystem) ReadResilience() uint {
+func (qs QuorumSystem) ReadResilience() float64 {
 	return qs.Reads.Resilience()
 }
 
-func (qs QuorumSystem) WriteResilience() uint {
+func (qs QuorumSystem) WriteResilience() float64 {
 	return qs.Writes.Resilience()
 }
 
@@ -479,10 +497,10 @@ func (qs QuorumSystem) loadOptimalStrategy(
 
 	for i, rq := range writeQuorums {
 		q := rq
-		v := lpVariable{Name: fmt.Sprintf("r%d", i), UBound: 1, LBound: 0, Value: 1.0, Index: len(readQuorums) + i, Quorum: &q}
+		v := lpVariable{Name: fmt.Sprintf("w%d", i), UBound: 1, LBound: 0, Value: 1.0, Index: len(readQuorums) + i, Quorum: &q}
 		writeQuorumVars = append(writeQuorumVars, v)
 
-		for n, _ := range rq {
+		for n := range rq {
 			if _, ok := xToWriteQuorumVars[n]; !ok {
 				xToWriteQuorumVars[n] = []lpVariable{v}
 				continue
@@ -607,61 +625,54 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		return vars, constr, obj, nil
 	}
 
-	frLoad := func(loadLimit *float64) ([]float64, [][2]float64, [][]float64, error) {
+	frLoad := func(loadLimit *float64, fr float64) ([]float64, [][2]float64, [][]float64, error) {
 		vars := make([]float64, 0)
 		constr := make([][2]float64, 0)
-		obj := make([][]float64, 0)
+		//obj := make([][]float64, 0)
 		ninf := math.Inf(-1)
 		pinf := math.Inf(1)
 
 		// initializes target array
 		for _, v := range readQuorumVars {
 			vars = append(vars, 1.0)
-			b := [][2]float64{{float64(v.LBound)}, {float64(v.UBound)}}
-			constr = append(constr, b...)
+			b := [2]float64{v.LBound, v.UBound}
+			constr = append(constr, b)
 
 		}
 		// add constraints 0 <= q <= 1
 		for _, v := range writeQuorumVars {
 			vars = append(vars, 1.0)
-			b := [][2]float64{{float64(v.LBound)}, {float64(v.UBound)}}
-			constr = append(constr, b...)
+			b := [2]float64{v.LBound, v.UBound}
+			constr = append(constr, b)
 		}
 
 		// l def
 		vars = append(vars, 1.0)
-		b := [][2]float64{{ninf}, {pinf}}
-		constr = append(constr, b...)
+		b := [2]float64{ninf, pinf}
+		constr = append(constr, b)
 
-		tmp := make([]float64, 0)
-		tmp = append(tmp, ninf)
-
+		// Load formula
+		objectives := make([][]float64, 0)
 		for n := range qs.Nodes() {
+			tmp := make([]float64, len(vars))
+
 			if _, ok := xToReadQuorumVars[n]; ok {
 				vs := xToReadQuorumVars[n]
-
 				for _, v := range vs {
-					tmp = append(tmp, fr*v.Value/float64(*qs.Node(n.Name).ReadCapacity))
+					tmp[v.Index] += fr * v.Value / float64(*qs.Node(n.Name).ReadCapacity)
 				}
 			}
-		}
 
-		for n := range qs.Nodes() {
 			if _, ok := xToWriteQuorumVars[n]; ok {
 				vs := xToWriteQuorumVars[n]
-
 				for _, v := range vs {
-					tmp = append(tmp, (1-fr)*v.Value/float64(*qs.Node(n.Name).WriteCapacity))
+					tmp[v.Index] += (1 - fr) * v.Value / float64(*qs.Node(n.Name).WriteCapacity)
 				}
 			}
+
+			objectives = append(objectives, tmp)
 		}
-
-		tmp = append(tmp, -1.0)
-		tmp = append(tmp, 0)
-
-		obj = append(obj, tmp)
-
-		return vars, constr, obj, nil
+		return vars, constr, objectives, nil
 	}
 
 	simp := clp.NewSimplex()
@@ -679,6 +690,10 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		readQConstraint = append(readQConstraint, 0.0)
 	}
 
+	if optimize == Load {
+		readQConstraint = append(readQConstraint, 0.0)
+	}
+
 	readQConstraint = append(readQConstraint, 1)
 
 	// write quorum constraint
@@ -693,6 +708,10 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		writeQConstraint = append(writeQConstraint, 1.0)
 	}
 
+	if optimize == Load {
+		writeQConstraint = append(writeQConstraint, 0.0)
+	}
+
 	writeQConstraint = append(writeQConstraint, 1)
 
 	vars := make([]float64, 0)
@@ -700,7 +719,9 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	obj := make([][]float64, 0)
 
 	if optimize == Load {
-		vars, constr, obj, _ = frLoad(nil)
+		objTotal := make([][]float64, 0)
+		vars, constr, objTotal = load(readFraction, vars, constr, loadLimit, frLoad)
+		obj = append(obj, objTotal...)
 	} else if optimize == Network {
 		vars, constr, obj = network(nil)
 	} else if optimize == Latency {
@@ -716,13 +737,13 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	}
 
 	if networkLimit != nil {
-		_, _, lobj, _ := latency(latencyLimit)
+		_, _, lobj := network(latencyLimit)
 		obj = append(obj, lobj[0])
 	}
 
 	if loadLimit != nil {
-		_, _, lobj, _ := frLoad(loadLimit)
-		obj = append(obj, lobj[0])
+		_, _, lobj := load(readFraction, vars, constr, loadLimit, frLoad)
+		obj = append(obj, lobj...)
 	}
 
 	simp.EasyLoadDenseProblem(vars, constr, obj)
@@ -750,6 +771,40 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	newStrategy := DefStrategy(qs, Sigma{Values: readSigma}, Sigma{Values: writeSigma})
 
 	return &newStrategy, nil
+}
+
+func load(readFraction map[float64]float64, vars []float64, constr [][2]float64, loadLimit *float64,
+	frLoad func(loadLimit *float64, fr float64) ([]float64, [][2]float64, [][]float64, error)) ([]float64, [][2]float64, [][]float64) {
+	objTemp := make([][]float64, 0)
+	objs := make([][]float64, 0)
+
+	for fr, p := range readFraction {
+		vars, constr, objTemp, _ = frLoad(nil, fr)
+
+		for r := 0; r < len(objTemp); r++ {
+
+			for c := 0; c < len(objTemp[r]); c++ {
+				objTemp[r][c] = objTemp[r][c] * p
+			}
+
+			ninf := math.Inf(-1)
+
+			loadLimitValue := 1.0
+
+			if loadLimit != nil {
+				loadLimitValue = *loadLimit
+			}
+
+			objTemp[r] = append([]float64{ninf}, objTemp[r]...)
+			objTemp[r][len(objTemp[r])-1] = -loadLimitValue
+			objTemp[r] = append(objTemp[r], 0)
+
+			objs = append(objs, objTemp...)
+		}
+
+	}
+
+	return vars, constr, objTemp
 }
 
 //Strategy

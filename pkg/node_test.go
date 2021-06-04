@@ -3,6 +3,7 @@ package pkg
 import (
 	"fmt"
 	"gotest.tools/assert"
+	"math"
 	"reflect"
 	"sort"
 	"strings"
@@ -138,8 +139,9 @@ func TestIsQuorum(t *testing.T) {
 }
 
 func TestResilience(t *testing.T) {
-	assertResilience := func(expr GenericExpr, n uint) {
-		assert.Assert(t, expr.Resilience() == n, fmt.Sprintf("Actual: %d | Expected  %d", expr.Resilience(), n))
+	assertResilience := func(expr GenericExpr, n float64) {
+		const float64EqualityThreshold = 1e-6
+		assert.Assert(t, math.Abs(expr.Resilience()-n) <= float64EqualityThreshold, fmt.Sprintf("Actual: %f | Expected  %f", expr.Resilience(), n))
 	}
 
 	a, b, c, d, e, f := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e"), DefNode("f")

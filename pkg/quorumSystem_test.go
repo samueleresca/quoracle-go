@@ -3,6 +3,7 @@ package pkg
 import (
 	"fmt"
 	"gotest.tools/assert"
+	"math"
 	"reflect"
 	"sort"
 	"strings"
@@ -276,6 +277,8 @@ func TestMakeStrategy(t *testing.T) {
 
 func TestOptimalStrategy(t *testing.T) {
 
+	const float64EqualityThreshold = 1e-9
+
 	a, b, c, d :=
 		DefNodeWithCapacity("a", 2, 1, 1), DefNodeWithCapacity("b", 2, 1, 2),
 		DefNodeWithCapacity("c", 2, 1, 3), DefNodeWithCapacity("d", 2, 1, 4)
@@ -289,7 +292,7 @@ func TestOptimalStrategy(t *testing.T) {
 	}
 
 	latency, _ := qs.Latency(strategyOptions)
-	assert.Assert(t, *latency == 2)
+	assert.Assert(t, math.Abs(*latency-2) <= float64EqualityThreshold)
 
 	strategyOptions = StrategyOptions{
 		Optimize: Network,
@@ -297,5 +300,15 @@ func TestOptimalStrategy(t *testing.T) {
 			values: map[Fraction]Weight{1: 1}},
 	}
 	networkLoad, _ := qs.NetworkLoad(strategyOptions)
-	assert.Assert(t, *networkLoad == 2)
+	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
+
+	strategyOptions = StrategyOptions{
+		Optimize: Load,
+		ReadFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+
+	load, _ := qs.Load(strategyOptions)
+	assert.Assert(t, math.Abs(*load-0.25) <= float64EqualityThreshold)
+
 }
