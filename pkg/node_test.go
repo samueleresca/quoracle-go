@@ -140,7 +140,7 @@ func TestIsQuorum(t *testing.T) {
 
 func TestResilience(t *testing.T) {
 	assertResilience := func(expr GenericExpr, n float64) {
-		const float64EqualityThreshold = 1e-6
+		const float64EqualityThreshold = 1e-3
 		assert.Assert(t, math.Abs(expr.Resilience()-n) <= float64EqualityThreshold, fmt.Sprintf("Actual: %f | Expected  %f", expr.Resilience(), n))
 	}
 

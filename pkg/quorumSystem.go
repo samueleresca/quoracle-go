@@ -474,40 +474,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	networkLimit *float64,
 	latencyLimit *float64) (*Strategy, error) {
 
-	readQuorumVars := make([]lpVariable, 0)
-	xToReadQuorumVars := make(map[GenericExpr][]lpVariable)
-
-	for i, rq := range readQuorums {
-		q := rq
-		v := lpVariable{Name: fmt.Sprintf("r%b", i), UBound: 1, LBound: 0, Value: 1.0, Index: i, Quorum: &q}
-		readQuorumVars = append(readQuorumVars, v)
-
-		for n := range rq {
-
-			if _, ok := xToReadQuorumVars[n]; !ok {
-				xToReadQuorumVars[n] = []lpVariable{v}
-				continue
-			}
-			xToReadQuorumVars[n] = append(xToReadQuorumVars[n], v)
-		}
-	}
-
-	writeQuorumVars := make([]lpVariable, 0)
-	xToWriteQuorumVars := make(map[GenericExpr][]lpVariable)
-
-	for i, rq := range writeQuorums {
-		q := rq
-		v := lpVariable{Name: fmt.Sprintf("w%d", i), UBound: 1, LBound: 0, Value: 1.0, Index: len(readQuorums) + i, Quorum: &q}
-		writeQuorumVars = append(writeQuorumVars, v)
-
-		for n := range rq {
-			if _, ok := xToWriteQuorumVars[n]; !ok {
-				xToWriteQuorumVars[n] = []lpVariable{v}
-				continue
-			}
-			xToWriteQuorumVars[n] = append(xToWriteQuorumVars[n], v)
-		}
-	}
+	readQuorumVars, xToReadQuorumVars, writeQuorumVars, xToWriteQuorumVars := optimizationVars(readQuorums, writeQuorums)
 
 	fr := 0.0
 
@@ -678,41 +645,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	simp := clp.NewSimplex()
 	simp.SetOptimizationDirection(clp.Minimize)
 
-	// read quorum constraint
-	readQConstraint := make([]float64, 0)
-	readQConstraint = append(readQConstraint, 1)
-
-	for range readQuorumVars {
-		readQConstraint = append(readQConstraint, 1.0)
-	}
-
-	for range writeQuorumVars {
-		readQConstraint = append(readQConstraint, 0.0)
-	}
-
-	if optimize == Load {
-		readQConstraint = append(readQConstraint, 0.0)
-	}
-
-	readQConstraint = append(readQConstraint, 1)
-
-	// write quorum constraint
-	writeQConstraint := make([]float64, 0)
-	writeQConstraint = append(writeQConstraint, 1)
-
-	for range readQuorumVars {
-		writeQConstraint = append(writeQConstraint, 0.0)
-	}
-
-	for range writeQuorumVars {
-		writeQConstraint = append(writeQConstraint, 1.0)
-	}
-
-	if optimize == Load {
-		writeQConstraint = append(writeQConstraint, 0.0)
-	}
-
-	writeQConstraint = append(writeQConstraint, 1)
+	readQConstraint, writeQConstraint := baseConstraints(optimize, readQuorumVars, writeQuorumVars)
 
 	vars := make([]float64, 0)
 	constr := make([][2]float64, 0)
@@ -771,6 +704,83 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	newStrategy := DefStrategy(qs, Sigma{Values: readSigma}, Sigma{Values: writeSigma})
 
 	return &newStrategy, nil
+}
+
+func optimizationVars(readQuorums []map[GenericExpr]bool, writeQuorums []map[GenericExpr]bool) (readQuorumVars []lpVariable, xToReadQuorumVars map[GenericExpr][]lpVariable, writeQuorumVars []lpVariable, xToWriteQuorumVars map[GenericExpr][]lpVariable) {
+	readQuorumVars = make([]lpVariable, 0)
+	xToReadQuorumVars = make(map[GenericExpr][]lpVariable)
+
+	for i, rq := range readQuorums {
+		q := rq
+		v := lpVariable{Name: fmt.Sprintf("r%b", i), UBound: 1, LBound: 0, Value: 1.0, Index: i, Quorum: &q}
+		readQuorumVars = append(readQuorumVars, v)
+
+		for n := range rq {
+
+			if _, ok := xToReadQuorumVars[n]; !ok {
+				xToReadQuorumVars[n] = []lpVariable{v}
+				continue
+			}
+			xToReadQuorumVars[n] = append(xToReadQuorumVars[n], v)
+		}
+	}
+
+	writeQuorumVars = make([]lpVariable, 0)
+	xToWriteQuorumVars = make(map[GenericExpr][]lpVariable)
+
+	for i, rq := range writeQuorums {
+		q := rq
+		v := lpVariable{Name: fmt.Sprintf("w%d", i), UBound: 1, LBound: 0, Value: 1.0, Index: len(readQuorums) + i, Quorum: &q}
+		writeQuorumVars = append(writeQuorumVars, v)
+
+		for n := range rq {
+			if _, ok := xToWriteQuorumVars[n]; !ok {
+				xToWriteQuorumVars[n] = []lpVariable{v}
+				continue
+			}
+			xToWriteQuorumVars[n] = append(xToWriteQuorumVars[n], v)
+		}
+	}
+	return readQuorumVars, xToReadQuorumVars, writeQuorumVars, xToWriteQuorumVars
+}
+
+func baseConstraints(optimize OptimizeType, readQuorumVars []lpVariable, writeQuorumVars []lpVariable) (readQConstraint []float64, writeQConstraint []float64) {
+	// read quorum constraint
+	readQConstraint = make([]float64, 0)
+	readQConstraint = append(readQConstraint, 1)
+
+	for range readQuorumVars {
+		readQConstraint = append(readQConstraint, 1.0)
+	}
+
+	for range writeQuorumVars {
+		readQConstraint = append(readQConstraint, 0.0)
+	}
+
+	if optimize == Load {
+		readQConstraint = append(readQConstraint, 0.0)
+	}
+
+	readQConstraint = append(readQConstraint, 1)
+
+	// write quorum constraint
+	writeQConstraint = make([]float64, 0)
+	writeQConstraint = append(writeQConstraint, 1)
+
+	for range readQuorumVars {
+		writeQConstraint = append(writeQConstraint, 0.0)
+	}
+
+	for range writeQuorumVars {
+		writeQConstraint = append(writeQConstraint, 1.0)
+	}
+
+	if optimize == Load {
+		writeQConstraint = append(writeQConstraint, 0.0)
+	}
+
+	writeQConstraint = append(writeQConstraint, 1)
+	return readQConstraint, writeQConstraint
 }
 
 func load(readFraction map[float64]float64, vars []float64, constr [][2]float64, loadLimit *float64,
