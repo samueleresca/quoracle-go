@@ -275,7 +275,7 @@ func TestMakeStrategy(t *testing.T) {
 	assert.Assert(t, err != nil)
 }
 
-func TestOptimalStrategy(t *testing.T) {
+func TestOptimalStrategyLoad(t *testing.T) {
 
 	const float64EqualityThreshold = 1e-9
 
@@ -364,8 +364,20 @@ func TestOptimalStrategy(t *testing.T) {
 	cap, _ = qs.Capacity(strategyOptions)
 	assert.Assert(t, math.Abs(*cap-2) <= float64EqualityThreshold)
 
+}
+
+func TestOptimalStrategyNetwork(t *testing.T) {
+
+	const float64EqualityThreshold = 1e-9
+
+	a, b, c, d :=
+		DefNodeWithCapacity("a", 2, 1, 1), DefNodeWithCapacity("b", 2, 1, 2),
+		DefNodeWithCapacity("c", 2, 1, 3), DefNodeWithCapacity("d", 2, 1, 4)
+
+	qs := DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
+
 	// Network optimized
-	strategyOptions = StrategyOptions{
+	strategyOptions := StrategyOptions{
 		Optimize: Network,
 		ReadFraction: QuorumDistribution{
 			values: map[Fraction]Weight{1: 1}},
@@ -401,7 +413,7 @@ func TestOptimalStrategy(t *testing.T) {
 	networkLoad, _ = qs.NetworkLoad(strategyOptions)
 	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
 
-	latencyLimit = 2
+	latencyLimit := 2.0
 
 	strategyOptions = StrategyOptions{
 		Optimize:     Network,
@@ -412,7 +424,7 @@ func TestOptimalStrategy(t *testing.T) {
 	networkLoad, _ = qs.NetworkLoad(strategyOptions)
 	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
 
-	latencyLimit = 3
+	latencyLimit = 3.0
 
 	strategyOptions = StrategyOptions{
 		Optimize:     Network,
@@ -423,8 +435,20 @@ func TestOptimalStrategy(t *testing.T) {
 	networkLoad, _ = qs.NetworkLoad(strategyOptions)
 	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
 
+}
+
+func TestOptimalStrategyLatency(t *testing.T) {
+
+	const float64EqualityThreshold = 1e-9
+
+	a, b, c, d :=
+		DefNodeWithCapacity("a", 2, 1, 1), DefNodeWithCapacity("b", 2, 1, 2),
+		DefNodeWithCapacity("c", 2, 1, 3), DefNodeWithCapacity("d", 2, 1, 4)
+
+	qs := DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
+
 	// Latency optimized
-	strategyOptions = StrategyOptions{
+	strategyOptions := StrategyOptions{
 		Optimize: Latency,
 		ReadFraction: QuorumDistribution{
 			values: map[Fraction]Weight{1: 1}},
@@ -442,7 +466,7 @@ func TestOptimalStrategy(t *testing.T) {
 	latency, _ = qs.Latency(strategyOptions)
 	assert.Assert(t, math.Abs(*latency-3) <= float64EqualityThreshold)
 
-	loadLimit = 1.0
+	loadLimit := 1.0
 
 	strategyOptions = StrategyOptions{
 		Optimize:  Latency,
@@ -466,7 +490,7 @@ func TestOptimalStrategy(t *testing.T) {
 	latency, _ = qs.Latency(strategyOptions)
 	assert.Assert(t, math.Abs(*latency-3) <= float64EqualityThreshold)
 
-	networkLimit = 2.0
+	networkLimit := 2.0
 
 	strategyOptions = StrategyOptions{
 		Optimize:     Latency,
