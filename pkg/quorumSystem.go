@@ -665,11 +665,20 @@ func (qs QuorumSystem) loadOptimalStrategy(
 
 	if latencyLimit != nil {
 		_, _, lobj, _ := latency(latencyLimit)
+
+		if len(obj[0]) != len(lobj) {
+			lobj[0] = insertAt(lobj[0], len(lobj[0])-1, 0)
+		}
+
 		obj = append(obj, lobj[0])
 	}
 
 	if networkLimit != nil {
 		_, _, lobj := network(latencyLimit)
+
+		if len(obj[0]) != len(lobj) {
+			lobj[0] = insertAt(lobj[0], len(lobj[0])-1, 0)
+		}
 		obj = append(obj, lobj[0])
 	}
 
@@ -816,8 +825,14 @@ func load(readFraction map[float64]float64, vars []float64, constr [][2]float64,
 	return vars, constr, objTemp
 }
 
-
-
+func insertAt(a []float64, index int, value float64) []float64 {
+	if len(a) == index { // nil or empty slice or after last element
+		return append(a, value)
+	}
+	a = append(a[:index+1], a[index:]...) // index < len(a)
+	a[index] = value
+	return a
+}
 
 //Strategy
 type Strategy struct {
