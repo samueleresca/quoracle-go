@@ -337,7 +337,6 @@ func TestOptimalStrategy(t *testing.T) {
 	cap, _ = qs.Capacity(strategyOptions)
 	assert.Assert(t, math.Abs(*cap-2) <= float64EqualityThreshold)
 
-
 	latencyLimit := 4.0
 	strategyOptions = StrategyOptions{
 		Optimize:     Load,
@@ -365,7 +364,64 @@ func TestOptimalStrategy(t *testing.T) {
 	cap, _ = qs.Capacity(strategyOptions)
 	assert.Assert(t, math.Abs(*cap-2) <= float64EqualityThreshold)
 
+	// Network optimized
+	strategyOptions = StrategyOptions{
+		Optimize: Network,
+		ReadFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+	networkLoad, _ := qs.NetworkLoad(strategyOptions)
+	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
 
+	strategyOptions = StrategyOptions{
+		Optimize: Network,
+		WriteFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+	networkLoad, _ = qs.NetworkLoad(strategyOptions)
+	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
+
+	loadLimit := 0.25
+	strategyOptions = StrategyOptions{
+		Optimize:  Network,
+		LoadLimit: &loadLimit,
+		ReadFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+	networkLoad, _ = qs.NetworkLoad(strategyOptions)
+	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
+
+	loadLimit = 0.5
+	strategyOptions = StrategyOptions{
+		Optimize:  Network,
+		LoadLimit: &loadLimit,
+		WriteFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+	networkLoad, _ = qs.NetworkLoad(strategyOptions)
+	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
+
+	latencyLimit = 2
+
+	strategyOptions = StrategyOptions{
+		Optimize:     Network,
+		LatencyLimit: &latencyLimit,
+		ReadFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+	networkLoad, _ = qs.NetworkLoad(strategyOptions)
+	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
+
+	latencyLimit = 3
+
+	strategyOptions = StrategyOptions{
+		Optimize:     Network,
+		LatencyLimit: &latencyLimit,
+		WriteFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+	networkLoad, _ = qs.NetworkLoad(strategyOptions)
+	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
 
 	// Latency optimized
 	strategyOptions = StrategyOptions{
@@ -377,13 +433,60 @@ func TestOptimalStrategy(t *testing.T) {
 	latency, _ := qs.Latency(strategyOptions)
 	assert.Assert(t, math.Abs(*latency-2) <= float64EqualityThreshold)
 
-	// Network optimized
 	strategyOptions = StrategyOptions{
-		Optimize: Network,
+		Optimize: Latency,
+		WriteFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+
+	latency, _ = qs.Latency(strategyOptions)
+	assert.Assert(t, math.Abs(*latency-3) <= float64EqualityThreshold)
+
+	loadLimit = 1.0
+
+	strategyOptions = StrategyOptions{
+		Optimize:  Latency,
+		LoadLimit: &loadLimit,
 		ReadFraction: QuorumDistribution{
 			values: map[Fraction]Weight{1: 1}},
 	}
-	networkLoad, _ := qs.NetworkLoad(strategyOptions)
-	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
 
+	latency, _ = qs.Latency(strategyOptions)
+	assert.Assert(t, math.Abs(*latency-2) <= float64EqualityThreshold)
+
+	loadLimit = 1.0
+
+	strategyOptions = StrategyOptions{
+		Optimize:  Latency,
+		LoadLimit: &loadLimit,
+		WriteFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+
+	latency, _ = qs.Latency(strategyOptions)
+	assert.Assert(t, math.Abs(*latency-3) <= float64EqualityThreshold)
+
+	networkLimit = 2.0
+
+	strategyOptions = StrategyOptions{
+		Optimize:     Latency,
+		NetworkLimit: &networkLimit,
+		ReadFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+
+	latency, _ = qs.Latency(strategyOptions)
+	assert.Assert(t, math.Abs(*latency-2) <= float64EqualityThreshold)
+
+	networkLimit = 2.0
+
+	strategyOptions = StrategyOptions{
+		Optimize:     Latency,
+		NetworkLimit: &networkLimit,
+		WriteFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+
+	latency, _ = qs.Latency(strategyOptions)
+	assert.Assert(t, math.Abs(*latency-3) <= float64EqualityThreshold)
 }
