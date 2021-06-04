@@ -515,7 +515,7 @@ func TestOptimalStrategyLatency(t *testing.T) {
 	assert.Assert(t, math.Abs(*latency-3) <= float64EqualityThreshold)
 }
 
-func TestOptimalStrategyIllegalSpecs(t *testing.T){
+func TestOptimalStrategyIllegalSpecs(t *testing.T) {
 	a, b, c, d :=
 		DefNodeWithCapacity("a", 2, 1, 1), DefNodeWithCapacity("b", 2, 1, 2),
 		DefNodeWithCapacity("c", 2, 1, 3), DefNodeWithCapacity("d", 2, 1, 4)
@@ -524,43 +524,87 @@ func TestOptimalStrategyIllegalSpecs(t *testing.T){
 
 	loadLimit := 1.0
 	strategyOptions := StrategyOptions{
-		Optimize: Load,
+		Optimize:  Load,
 		LoadLimit: &loadLimit,
 		ReadFraction: QuorumDistribution{
 			values: map[Fraction]Weight{1: 1}},
 	}
 
-
 	_, err := qs.Load(strategyOptions)
 
 	assert.Assert(t, err.Error() == "a load limit cannot be set when optimizing for load")
 
-
 	networkLimit := 1.0
 	strategyOptions = StrategyOptions{
-		Optimize: Network,
+		Optimize:     Network,
 		NetworkLimit: &networkLimit,
 		ReadFraction: QuorumDistribution{
 			values: map[Fraction]Weight{1: 1}},
 	}
 
-
 	_, err = qs.Load(strategyOptions)
 
 	assert.Assert(t, err.Error() == "a network limit cannot be set when optimizing for network")
 
-
 	latencyLimit := 1.0
 	strategyOptions = StrategyOptions{
-		Optimize: Latency,
+		Optimize:     Latency,
 		LatencyLimit: &latencyLimit,
 		ReadFraction: QuorumDistribution{
 			values: map[Fraction]Weight{1: 1}},
 	}
 
-
 	_, err = qs.Load(strategyOptions)
 
 	assert.Assert(t, err.Error() == "a latency limit cannot be set when optimizing for latency")
 
+}
+
+func TestOptimalStrategyUnsatisfiableConstraints(t *testing.T) {
+	a, b, c, d :=
+		DefNodeWithCapacity("a", 2, 1, 1), DefNodeWithCapacity("b", 2, 1, 2),
+		DefNodeWithCapacity("c", 2, 1, 3), DefNodeWithCapacity("d", 2, 1, 4)
+
+	qs := DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
+
+	networkLimit := 1.5
+
+	strategyOptions := StrategyOptions{
+		Optimize:     Load,
+		NetworkLimit: &networkLimit,
+		WriteFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+
+	_, err := qs.Load(strategyOptions)
+
+	assert.Assert(t, err.Error() == "no optimal strategy found")
+
+	latencyLimit := 2.0
+
+	strategyOptions = StrategyOptions{
+		Optimize:     Load,
+		LatencyLimit: &latencyLimit,
+		WriteFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+
+	_, err = qs.Load(strategyOptions)
+
+	assert.Assert(t, err.Error() == "no optimal strategy found")
+
+	latencyLimit = 2.0
+	loadLimit := 0.25
+
+	strategyOptions = StrategyOptions{
+		Optimize:     Network,
+		LatencyLimit: &latencyLimit,
+		LoadLimit:    &loadLimit,
+		ReadFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
+
+	_, err = qs.Load(strategyOptions)
+
+	assert.Assert(t, err.Error() == "no optimal strategy found")
 }

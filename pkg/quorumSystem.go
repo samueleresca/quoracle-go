@@ -91,18 +91,18 @@ func (qs QuorumSystem) String() string {
 }
 
 func initStrategyOptions(initOptions StrategyOptions) func(options *StrategyOptions) error {
-		init := func(options *StrategyOptions) error{
-			options.Optimize = initOptions.Optimize
-			options.LatencyLimit = initOptions.LatencyLimit
-			options.NetworkLimit = initOptions.NetworkLimit
-			options.LoadLimit = initOptions.LoadLimit
-			options.F = initOptions.F
-			options.ReadFraction = initOptions.ReadFraction
-			options.WriteFraction = initOptions.WriteFraction
+	init := func(options *StrategyOptions) error {
+		options.Optimize = initOptions.Optimize
+		options.LatencyLimit = initOptions.LatencyLimit
+		options.NetworkLimit = initOptions.NetworkLimit
+		options.LoadLimit = initOptions.LoadLimit
+		options.F = initOptions.F
+		options.ReadFraction = initOptions.ReadFraction
+		options.WriteFraction = initOptions.WriteFraction
 
-			return nil
-		}
-		return init
+		return nil
+	}
+	return init
 }
 
 func (qs QuorumSystem) Capacity(strategyOptions StrategyOptions) (*float64, error) {
@@ -124,12 +124,10 @@ func (qs QuorumSystem) Latency(strategyOptions StrategyOptions) (*float64, error
 		return nil, err
 	}
 
-
 	return strategy.Latency(&strategyOptions.ReadFraction, &strategyOptions.WriteFraction)
 }
 
 func (qs QuorumSystem) Load(strategyOptions StrategyOptions) (*float64, error) {
-
 
 	strategy, err := qs.Strategy(initStrategyOptions(strategyOptions))
 
@@ -657,7 +655,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	}
 
 	if networkLimit != nil {
-		_, _, lobj := network(latencyLimit)
+		_, _, lobj := network(networkLimit)
 
 		if len(obj[0]) != len(lobj) {
 			lobj[0] = insertAt(lobj[0], len(lobj[0])-1, 0)
@@ -669,7 +667,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		_, _, lobj := load(readFraction, vars, constr, loadLimit, frLoad)
 		vars = append(vars, 0)
 
-		for r:=0; r < len(obj); r++{
+		for r := 0; r < len(obj); r++ {
 			if len(obj[r]) != len(vars) {
 				obj[r] = insertAt(obj[r], len(obj[r])-1, 0.0)
 			}
@@ -686,8 +684,12 @@ func (qs QuorumSystem) loadOptimalStrategy(
 
 	simp.EasyLoadDenseProblem(vars, constr, obj)
 	// Solve the optimization problem.
-	simp.Primal(clp.NoValuesPass, clp.NoStartFinishOptions)
+	status := simp.Primal(clp.NoValuesPass, clp.NoStartFinishOptions)
 	soln := simp.PrimalColumnSolution()
+
+	if status != clp.Optimal {
+		return nil, fmt.Errorf("no optimal strategy found")
+	}
 
 	fmt.Println(soln)
 
@@ -831,7 +833,7 @@ func insertAt(a []float64, index int, value float64) []float64 {
 	return a
 }
 
-func fResilientQuorums(){
+func fResilientQuorums() {
 
 }
 
