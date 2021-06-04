@@ -310,19 +310,21 @@ func TestOptimalStrategy(t *testing.T) {
 	cap, _ = qs.Capacity(strategyOptions)
 	assert.Assert(t, math.Abs(*cap-2) <= float64EqualityThreshold)
 
-	/*	networkLimit := 2.0
-		strategyOptions = StrategyOptions{
-			Optimize: Load,
-			NetworkLimit: &networkLimit,
-			WriteFraction: QuorumDistribution{
-				values: map[Fraction]Weight{1: 1}},
-		}
+	/*networkLimit := 2.0
+	strategyOptions = StrategyOptions{
+		Optimize: Load,
+		NetworkLimit: &networkLimit,
+		WriteFraction: QuorumDistribution{
+			values: map[Fraction]Weight{1: 1}},
+	}
 
-		load, _ = qs.Load(strategyOptions)
-		assert.Assert(t, math.Abs(*load-0.25) <= float64EqualityThreshold)
+	load, _ = qs.Load(strategyOptions)
+	assert.Assert(t, math.Abs(*load-0.25) <= float64EqualityThreshold)
 
-		cap, _ = qs.Capacity(strategyOptions)
-		assert.Assert(t, math.Abs(*cap-4) <= float64EqualityThreshold)
+	cap, _ = qs.Capacity(strategyOptions)
+	assert.Assert(t, math.Abs(*cap-4) <= float64EqualityThreshold)
+
+
 
 		strategyOptions = StrategyOptions{
 			Optimize: Load,

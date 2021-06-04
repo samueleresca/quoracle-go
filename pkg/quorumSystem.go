@@ -645,8 +645,6 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	simp := clp.NewSimplex()
 	simp.SetOptimizationDirection(clp.Minimize)
 
-	readQConstraint, writeQConstraint := baseConstraints(optimize, readQuorumVars, writeQuorumVars)
-
 	vars := make([]float64, 0)
 	constr := make([][2]float64, 0)
 	obj := make([][]float64, 0)
@@ -661,6 +659,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		vars, constr, obj, _ = latency(nil)
 	}
 
+	readQConstraint, writeQConstraint := baseConstraints(optimize, readQuorumVars, writeQuorumVars)
 	obj = append(obj, readQConstraint)
 	obj = append(obj, writeQConstraint)
 
@@ -816,6 +815,9 @@ func load(readFraction map[float64]float64, vars []float64, constr [][2]float64,
 
 	return vars, constr, objTemp
 }
+
+
+
 
 //Strategy
 type Strategy struct {
