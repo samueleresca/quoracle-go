@@ -3,7 +3,6 @@ package pkg
 import (
 	"fmt"
 	"github.com/lanl/clp"
-	"math"
 	"math/bits"
 	"sort"
 	"strings"
@@ -117,7 +116,7 @@ func (n Node) Resilience() float64 {
 		qs = append(qs, q)
 	}
 
-	return float64(minHittingSet(qs) - 1)
+	return minHittingSet(qs) - 1.0
 }
 
 func (n Node) DupFree() bool {
@@ -220,7 +219,7 @@ func (e Or) Resilience() float64 {
 		qs = append(qs, q)
 	}
 
-	return float64(minHittingSet(qs) - 1)
+	return minHittingSet(qs) - 1.0
 }
 
 func (e Or) DupFree() bool {
@@ -348,13 +347,13 @@ func (e And) Resilience() float64 {
 		return float64(e.DupFreeMinFailures() - 1)
 	}
 
-	qs := make([]map[GenericExpr]bool, 0)
+	qs := make([]ExprSet, 0)
 
 	for q := range e.Quorums() {
 		qs = append(qs, q)
 	}
 
-	return float64(minHittingSet(qs) - 1)
+	return minHittingSet(qs) - 1.0
 }
 
 func (e And) DupFree() bool {
@@ -472,7 +471,7 @@ func (e Choose) Quorums() chan ExprSet {
 	return chnl
 }
 
-func (e Choose) IsQuorum(xs map[GenericExpr]bool) bool {
+func (e Choose) IsQuorum(xs ExprSet) bool {
 	sum := 0
 	for _, es := range e.Es {
 		if es.IsQuorum(xs) {
@@ -529,13 +528,13 @@ func (e Choose) Resilience() float64 {
 		return float64(e.DupFreeMinFailures() - 1)
 	}
 
-	qs := make([]map[GenericExpr]bool, 0)
+	qs := make([]ExprSet, 0)
 
 	for q := range e.Quorums() {
 		qs = append(qs, q)
 	}
 
-	return float64(minHittingSet(qs) - 1)
+	return minHittingSet(qs) - 1.0
 }
 
 func (e Choose) DupFree() bool {
@@ -603,8 +602,8 @@ func andExpr(lhs GenericExpr, rhs GenericExpr) And {
 	}
 }
 
-func mergeGenericExprSets(maps ...map[GenericExpr]bool) map[GenericExpr]bool {
-	result := make(map[GenericExpr]bool)
+func mergeGenericExprSets(maps ...ExprSet) ExprSet {
+	result := make(ExprSet)
 	for _, m := range maps {
 		for k, v := range m {
 			result[k] = v
@@ -698,7 +697,7 @@ func exprMapToList(input ExprSet) []GenericExpr {
 }
 
 func exprListToMap(input []GenericExpr) ExprSet {
-	result := make(map[GenericExpr]bool)
+	result := make(ExprSet)
 
 	for _, k := range input {
 		result[k] = true
@@ -707,13 +706,13 @@ func exprListToMap(input []GenericExpr) ExprSet {
 	return result
 }
 
-func minHittingSet(sets []ExprSet) int {
+func minHittingSet(sets []ExprSet) float64 {
 
 	xVars := make(map[GenericExpr]float64)
 	x := make([]float64, 0)
 	constraints := make([][2]float64, 0)
 	obj := make([][]float64, 0)
-	pinf := math.Inf(1)
+	//pinf := math.Inf(1)
 	simp := clp.NewSimplex()
 
 	for _, xs := range sets {
@@ -735,14 +734,14 @@ func minHittingSet(sets []ExprSet) int {
 		tmp := make([]float64, 0)
 		tmp = append(tmp, 1)
 
-		for k, _ := range xVars {
+		for k := range xVars {
 			if _, ok := xs[k]; ok {
 				tmp = append(tmp, 1)
 			} else {
 				tmp = append(tmp, 0)
 			}
 		}
-		tmp = append(tmp, pinf)
+		tmp = append(tmp, float64(len(xVars)))
 		obj = append(obj, tmp)
 	}
 
@@ -756,13 +755,17 @@ func minHittingSet(sets []ExprSet) int {
 	simp.SetOptimizationDirection(clp.Minimize)
 
 	// Solve the optimization problem.
-	simp.Primal(clp.NoValuesPass, clp.NoStartFinishOptions)
+	status := simp.Primal(clp.NoValuesPass, clp.NoStartFinishOptions)
 	soln := simp.PrimalColumnSolution()
 	fmt.Println(soln)
+
+	if status != clp.Optimal {
+		fmt.Println("Error")
+	}
 
 	result := 0.0
 	for _, v := range soln {
 		result += v
 	}
-	return int(math.Round(result))
+	return result
 }

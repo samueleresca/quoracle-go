@@ -148,22 +148,22 @@ func (qs QuorumSystem) NetworkLoad(strategyOptions StrategyOptions) (*float64, e
 
 	return strategy.NetworkLoad(&strategyOptions.ReadFraction, &strategyOptions.WriteFraction)
 }
-func (qs QuorumSystem) ReadQuorums() chan map[GenericExpr]bool {
+func (qs QuorumSystem) ReadQuorums() chan ExprSet {
 	return qs.Reads.Quorums()
 }
 
-func (qs QuorumSystem) WriteQuorums() chan map[GenericExpr]bool {
+func (qs QuorumSystem) WriteQuorums() chan ExprSet {
 	for t := range qs.Writes.Quorums() {
 		fmt.Println(t)
 	}
 	return qs.Writes.Quorums()
 }
 
-func (qs QuorumSystem) IsReadQuorum(xs map[GenericExpr]bool) bool {
+func (qs QuorumSystem) IsReadQuorum(xs ExprSet) bool {
 	return qs.Reads.IsQuorum(xs)
 }
 
-func (qs QuorumSystem) IsWriteQuorum(xs map[GenericExpr]bool) bool {
+func (qs QuorumSystem) IsWriteQuorum(xs ExprSet) bool {
 	return qs.Writes.IsQuorum(xs)
 }
 
@@ -185,14 +185,12 @@ func (qs QuorumSystem) Nodes() NodeSet {
 	return r
 }
 
-func (qs QuorumSystem) Elements() map[string]bool {
-	r := make(map[string]bool, 0)
-
+func (qs QuorumSystem) Elements() []Node {
+	nodes := make([]Node, 0)
 	for n := range qs.Nodes() {
-		r[n.String()] = true
+		nodes = append(nodes, n)
 	}
-
-	return r
+	return nodes
 }
 
 func (qs QuorumSystem) Resilience() float64 {
@@ -245,8 +243,8 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 		return nil, fmt.Errorf("f must be >= 0")
 	}
 
-	rq := make([]map[GenericExpr]bool, 0)
-	wq := make([]map[GenericExpr]bool, 0)
+	rq := make([]ExprSet, 0)
+	wq := make([]ExprSet, 0)
 
 	for e := range qs.ReadQuorums() {
 		rq = append(rq, e)
@@ -267,8 +265,20 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 			sb.LoadLimit, sb.NetworkLimit, sb.LatencyLimit)
 	}
 
-	// TODO: implement resilience
-	return qs.loadOptimalStrategy(sb.Optimize, rq, wq, sb.ReadFraction.GetValue(),
+	xs := qs.Elements()
+
+	rq = make([]ExprSet, 0)
+	wq = make([]ExprSet, 0)
+
+	for _, e := range qs.fResilientQuorums(sb.F, xs, qs.Reads) {
+		rq = append(rq, e)
+	}
+
+	for _, e := range qs.fResilientQuorums(sb.F, xs, qs.Writes) {
+		wq = append(wq, e)
+	}
+
+	return qs.loadOptimalStrategy(sb.Optimize, rq, wq, d,
 		sb.LoadLimit, sb.NetworkLimit, sb.LatencyLimit)
 }
 
@@ -406,8 +416,59 @@ func (qs QuorumSystem) minimize(sets []ExprSet) []ExprSet {
 	return minimalElements
 }
 
-func (qs QuorumSystem) fResilientQuorums(f int, xs []Node, e GenericExpr) {
+func (qs QuorumSystem) fResilientQuorums(f int, xs []Node, e GenericExpr) []ExprSet {
+	s := ExprSet{}
+	result := make([]ExprSet, 0)
+	return fResilientHelper(result, f, xs, e, s, 0)
+}
 
+func fResilientHelper(result []ExprSet, f int, xs []Node, e GenericExpr, s ExprSet, i int) []ExprSet {
+	minf := f
+
+	if f > len(s) {
+		minf = len(s)
+	}
+
+	isAll := true
+	combinationSets := combinations(exprMapToList(s), minf)
+
+	for _, failure := range combinationSets {
+		if !e.IsQuorum(removeFromExprSet(s, failure)) {
+			isAll = false
+		}
+	}
+
+	if isAll && len(combinationSets) > 0 {
+		result = append(result, s)
+		return result
+	}
+
+	for j := i; j < len(xs); j++ {
+		s[xs[j]] = true
+		defer delete(s, xs[j])
+		return fResilientHelper(result, f, xs, e, copyExprSet(s), j+1)
+
+	}
+	return result
+}
+
+func removeFromExprSet(set ExprSet, g []GenericExpr) ExprSet {
+	newSet := copyExprSet(set)
+
+	for _, e := range g {
+		delete(newSet, e)
+	}
+
+	return newSet
+}
+
+func copyExprSet(set ExprSet) ExprSet {
+	newSet := make(ExprSet)
+
+	for k, v := range set {
+		newSet[k] = v
+	}
+	return newSet
 }
 
 func (qs QuorumSystem) readQuorumLatency(quorum []Node) (*uint, error) {
@@ -418,7 +479,7 @@ func (qs QuorumSystem) writeQuorumLatency(quorum []Node) (*uint, error) {
 	return qs.quorumLatency(quorum, qs.IsWriteQuorum)
 }
 
-func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(map[GenericExpr]bool) bool) (*uint, error) {
+func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(set ExprSet) bool) (*uint, error) {
 
 	sortedQ := make([]Node, 0)
 
@@ -433,7 +494,7 @@ func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(map[GenericExp
 	By(nodeLatency).Sort(sortedQ)
 
 	for i := range quorum {
-		xNodes := make(map[GenericExpr]bool)
+		xNodes := make(ExprSet)
 
 		for _, q := range sortedQ[:i+1] {
 			xNodes[q] = true
@@ -450,8 +511,8 @@ func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(map[GenericExp
 
 func (qs QuorumSystem) loadOptimalStrategy(
 	optimize OptimizeType,
-	readQuorums []map[GenericExpr]bool,
-	writeQuorums []map[GenericExpr]bool,
+	readQuorums []ExprSet,
+	writeQuorums []ExprSet,
 	readFraction map[float64]float64,
 	loadLimit *float64,
 	networkLimit *float64,
@@ -486,17 +547,18 @@ func (qs QuorumSystem) loadOptimalStrategy(
 			constr = append(constr, b)
 		}
 
-		tmp := make([]float64, 0)
-		tmp = append(tmp, ninf)
+		tmp := make([]float64, len(vars))
 
 		// network_def  - inf <= network_def <= +inf
-		for i := range readQuorumVars {
-			tmp = append(tmp, fr*float64(len(readQuorums[i])))
+		for _, v := range readQuorumVars {
+			tmp[v.Index] = fr * float64(len(*v.Quorum))
 		}
 
-		for i := range writeQuorumVars {
-			tmp = append(tmp, (1-fr)*float64(len(writeQuorums[i])))
+		for _, v := range writeQuorumVars {
+			tmp[v.Index] = (1 - fr) * float64(len(*v.Quorum))
 		}
+
+		tmp = append([]float64{ninf}, tmp...)
 
 		if networkLimit == nil {
 			tmp = append(tmp, pinf)
@@ -537,33 +599,33 @@ func (qs QuorumSystem) loadOptimalStrategy(
 
 		// building latency objs | -inf <= latency_def <= inf
 
-		tmp := make([]float64, 0)
-		tmp = append(tmp, ninf)
+		tmp := make([]float64, len(vars))
 
-		for i, v := range readQuorumVars {
+		for _, v := range readQuorumVars {
 			quorum := make([]Node, 0)
 
-			for x := range readQuorums[i] {
+			for x := range *v.Quorum {
 				q := qs.Node(x.String())
 				quorum = append(quorum, q)
 			}
 
 			l, _ := qs.readQuorumLatency(quorum)
-			tmp = append(tmp, fr*v.Value*float64(*l))
+			tmp[v.Index] = fr * v.Value * float64(*l)
 		}
 
-		for i, v := range writeQuorumVars {
+		for _, v := range writeQuorumVars {
 			quorum := make([]Node, 0)
 
-			for x := range writeQuorums[i] {
+			for x := range *v.Quorum {
 				q := qs.Node(x.String())
 				quorum = append(quorum, q)
 			}
 
 			l, _ := qs.writeQuorumLatency(quorum)
-
-			tmp = append(tmp, (1-fr)*v.Value*float64(*l))
+			tmp[v.Index] = (1 - fr) * v.Value * float64(*l)
 		}
+
+		tmp = append([]float64{ninf}, tmp...)
 
 		if latencyLimit == nil {
 			tmp = append(tmp, pinf)
@@ -578,7 +640,6 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	frLoad := func(loadLimit *float64, fr float64) ([]float64, [][2]float64, [][]float64, error) {
 		vars := make([]float64, 0)
 		constr := make([][2]float64, 0)
-		//obj := make([][]float64, 0)
 		ninf := math.Inf(-1)
 		pinf := math.Inf(1)
 
@@ -644,14 +705,20 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	obj = append(obj, readQConstraint)
 	obj = append(obj, writeQConstraint)
 
-	if latencyLimit != nil {
-		_, _, lobj, _ := latency(latencyLimit)
+	if loadLimit != nil {
+		_, _, lobj := load(readFraction, vars, constr, loadLimit, frLoad)
+		vars = append(vars, 0)
 
-		if len(obj[0]) != len(lobj) {
-			lobj[0] = insertAt(lobj[0], len(lobj[0])-1, 0)
+		for r := 0; r < len(obj); r++ {
+			if len(obj[r]) != len(vars) {
+				obj[r] = insertAt(obj[r], len(obj[r])-1, 0.0)
+			}
 		}
 
-		obj = append(obj, lobj[0])
+		b := [2]float64{math.Inf(-1), math.Inf(1)}
+		constr = append(constr, b)
+
+		obj = append(obj, lobj...)
 	}
 
 	if networkLimit != nil {
@@ -663,23 +730,14 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		obj = append(obj, lobj[0])
 	}
 
-	if loadLimit != nil {
-		_, _, lobj := load(readFraction, vars, constr, loadLimit, frLoad)
-		vars = append(vars, 0)
+	if latencyLimit != nil {
+		_, _, lobj, _ := latency(latencyLimit)
 
-		for r := 0; r < len(obj); r++ {
-			if len(obj[r]) != len(vars) {
-				obj[r] = insertAt(obj[r], len(obj[r])-1, 0.0)
-			}
+		if len(obj[0]) != len(lobj[0]) {
+			lobj[0] = insertAt(lobj[0], len(lobj[0])-1, 0)
 		}
 
-		ninf := math.Inf(-1)
-		pinf := math.Inf(1)
-
-		b := [2]float64{ninf, pinf}
-		constr = append(constr, b)
-
-		obj = append(obj, lobj...)
+		obj = append(obj, lobj[0])
 	}
 
 	simp.EasyLoadDenseProblem(vars, constr, obj)
@@ -713,7 +771,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	return &newStrategy, nil
 }
 
-func defineOptimizationVars(readQuorums []map[GenericExpr]bool, writeQuorums []map[GenericExpr]bool) (readQuorumVars []lpVariable, xToReadQuorumVars map[GenericExpr][]lpVariable, writeQuorumVars []lpVariable, xToWriteQuorumVars map[GenericExpr][]lpVariable) {
+func defineOptimizationVars(readQuorums []ExprSet, writeQuorums []ExprSet) (readQuorumVars []lpVariable, xToReadQuorumVars map[GenericExpr][]lpVariable, writeQuorumVars []lpVariable, xToWriteQuorumVars map[GenericExpr][]lpVariable) {
 	readQuorumVars = make([]lpVariable, 0)
 	xToReadQuorumVars = make(map[GenericExpr][]lpVariable)
 
@@ -833,10 +891,6 @@ func insertAt(a []float64, index int, value float64) []float64 {
 	return a
 }
 
-func fResilientQuorums() {
-
-}
-
 //Strategy
 type Strategy struct {
 	Qs                QuorumSystem
@@ -882,11 +936,16 @@ func (s Strategy) String() string {
 	return ""
 }
 
-func (s Strategy) GetReadQuorum() map[GenericExpr]bool {
+func (s Strategy) GetReadQuorum() ExprSet {
 
 	rand.Seed(time.Now().UTC().UnixNano()) // always seed random!
 
 	criteria := make([]wr.Choice, 0)
+
+	weightSum := 0.0
+	for _, w := range s.SigmaR.Values {
+		weightSum += w.Probability
+	}
 
 	for _, sigmaRecord := range s.SigmaR.Values {
 		criteria = append(criteria, wr.Choice{Item: sigmaRecord.Quorum, Weight: uint(sigmaRecord.Probability * 10)})
@@ -898,11 +957,16 @@ func (s Strategy) GetReadQuorum() map[GenericExpr]bool {
 	return result
 }
 
-func (s Strategy) GetWriteQuorum() map[GenericExpr]bool {
+func (s Strategy) GetWriteQuorum() ExprSet {
 
 	rand.Seed(time.Now().UTC().UnixNano()) // always seed random!
 
 	criteria := make([]wr.Choice, 0)
+
+	weightSum := 0.0
+	for _, w := range s.SigmaW.Values {
+		weightSum += w.Probability
+	}
 
 	for _, sigmaRecord := range s.SigmaW.Values {
 		criteria = append(criteria, wr.Choice{Item: sigmaRecord.Quorum, Weight: uint(sigmaRecord.Probability * 10)})
