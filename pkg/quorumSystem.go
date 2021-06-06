@@ -193,7 +193,7 @@ func (qs QuorumSystem) Elements() []Node {
 	return nodes
 }
 
-func (qs QuorumSystem) Resilience() float64 {
+func (qs QuorumSystem) Resilience() uint {
 	rr := qs.ReadResilience()
 	ww := qs.WriteResilience()
 
@@ -204,11 +204,11 @@ func (qs QuorumSystem) Resilience() float64 {
 	return ww
 }
 
-func (qs QuorumSystem) ReadResilience() float64 {
+func (qs QuorumSystem) ReadResilience() uint {
 	return qs.Reads.Resilience()
 }
 
-func (qs QuorumSystem) WriteResilience() float64 {
+func (qs QuorumSystem) WriteResilience() uint {
 	return qs.Writes.Resilience()
 }
 

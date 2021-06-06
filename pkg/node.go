@@ -3,6 +3,7 @@ package pkg
 import (
 	"fmt"
 	"github.com/lanl/clp"
+	"math"
 	"math/bits"
 	"sort"
 	"strings"
@@ -25,7 +26,7 @@ type GenericExpr interface {
 	Nodes() NodeSet
 	NumLeaves() uint
 	DupFreeMinFailures() uint
-	Resilience() float64
+	Resilience() uint
 	DupFree() bool
 	String() string
 	GetEs() []GenericExpr
@@ -105,9 +106,9 @@ func (n Node) DupFreeMinFailures() uint {
 	return 1
 }
 
-func (n Node) Resilience() float64 {
+func (n Node) Resilience() uint {
 	if n.DupFree() {
-		return float64(n.DupFreeMinFailures() - 1)
+		return n.DupFreeMinFailures() - 1
 	}
 
 	qs := make([]ExprSet, 0)
@@ -208,9 +209,9 @@ func (e Or) DupFreeMinFailures() uint {
 	return total
 }
 
-func (e Or) Resilience() float64 {
+func (e Or) Resilience() uint {
 	if e.DupFree() {
-		return float64(e.DupFreeMinFailures() - 1)
+		return e.DupFreeMinFailures() - 1
 	}
 
 	qs := make([]ExprSet, 0)
@@ -342,9 +343,9 @@ func (e And) DupFreeMinFailures() uint {
 	return min
 }
 
-func (e And) Resilience() float64 {
+func (e And) Resilience() uint {
 	if e.DupFree() {
-		return float64(e.DupFreeMinFailures() - 1)
+		return e.DupFreeMinFailures() - 1
 	}
 
 	qs := make([]ExprSet, 0)
@@ -353,7 +354,7 @@ func (e And) Resilience() float64 {
 		qs = append(qs, q)
 	}
 
-	return minHittingSet(qs) - 1.0
+	return minHittingSet(qs) - 1
 }
 
 func (e And) DupFree() bool {
@@ -523,9 +524,9 @@ func (e Choose) DupFreeMinFailures() uint {
 	return uint(total)
 }
 
-func (e Choose) Resilience() float64 {
+func (e Choose) Resilience() uint {
 	if e.DupFree() {
-		return float64(e.DupFreeMinFailures() - 1)
+		return e.DupFreeMinFailures() - 1
 	}
 
 	qs := make([]ExprSet, 0)
@@ -706,7 +707,7 @@ func exprListToMap(input []GenericExpr) ExprSet {
 	return result
 }
 
-func minHittingSet(sets []ExprSet) float64 {
+func minHittingSet(sets []ExprSet) uint {
 
 	xVars := make(map[GenericExpr]float64)
 	x := make([]float64, 0)
@@ -741,7 +742,7 @@ func minHittingSet(sets []ExprSet) float64 {
 				tmp = append(tmp, 0)
 			}
 		}
-		tmp = append(tmp, float64(len(xVars)))
+		tmp = append(tmp, math.Inf(1))
 		obj = append(obj, tmp)
 	}
 
@@ -763,9 +764,9 @@ func minHittingSet(sets []ExprSet) float64 {
 		fmt.Println("Error")
 	}
 
-	result := 0.0
+	result := uint(0)
 	for _, v := range soln {
-		result += v
+		result += uint(math.Round(v))
 	}
 	return result
 }

@@ -651,7 +651,6 @@ func TestOptimalStrategyUnsatisfiableConstraints(t *testing.T) {
 	}
 
 	_, err := qs.Load(strategyOptions)
-
 	assert.Assert(t, err.Error() == "no optimal strategy found")
 
 	latencyLimit := 2.0
@@ -664,7 +663,6 @@ func TestOptimalStrategyUnsatisfiableConstraints(t *testing.T) {
 	}
 
 	_, err = qs.Load(strategyOptions)
-
 	assert.Assert(t, err.Error() == "no optimal strategy found")
 
 	latencyLimit = 2.0
@@ -679,6 +677,5 @@ func TestOptimalStrategyUnsatisfiableConstraints(t *testing.T) {
 	}
 
 	//_, err := qs.Load(strategyOptions)
-
 	//assert.Assert(t, err.Error() == "no optimal strategy found")
 }
