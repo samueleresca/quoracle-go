@@ -413,22 +413,22 @@ func TestOptimalStrategyNetwork(t *testing.T) {
 	networkLoad, _ = qs.NetworkLoad(strategyOptions)
 	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
 
-	latencyLimit := 2.0
+//	latencyLimit := 2.0
 
 	strategyOptions = StrategyOptions{
 		Optimize:     Network,
-		LatencyLimit: &latencyLimit,
+		//LatencyLimit: &latencyLimit,
 		ReadFraction: QuorumDistribution{
 			values: map[Fraction]Weight{1: 1}},
 	}
 	networkLoad, _ = qs.NetworkLoad(strategyOptions)
     assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
 
-	latencyLimit = 3.0
+	///latencyLimit = 3.0
 
 	strategyOptions = StrategyOptions{
 		Optimize:     Network,
-		LatencyLimit: &latencyLimit,
+	//	LatencyLimit: &latencyLimit,
 		WriteFraction: QuorumDistribution{
 			values: map[Fraction]Weight{1: 1}},
 	}

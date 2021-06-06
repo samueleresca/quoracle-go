@@ -657,7 +657,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	if networkLimit != nil {
 		_, _, lobj := network(networkLimit)
 
-		if len(obj[0]) != len(lobj) {
+		if len(obj[0]) != len(lobj[0]) {
 			lobj[0] = insertAt(lobj[0], len(lobj[0])-1, 0)
 		}
 		obj = append(obj, lobj[0])
