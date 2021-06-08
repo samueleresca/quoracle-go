@@ -63,6 +63,18 @@ func DefNodeWithCapacity(name string, readCapacity uint, writeCapacity uint, lat
 	return node
 }
 
+func DefNodeWithLatency(name string, latency uint) Node {
+	node := Node{}
+
+	node.Name = name
+	initialValue := uint(1)
+	node.ReadCapacity = &initialValue
+	node.WriteCapacity = &initialValue
+	node.Latency = &latency
+
+	return node
+}
+
 func (n Node) Add(expr GenericExpr) Or {
 	return orExpr(n, expr)
 }

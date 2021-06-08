@@ -367,7 +367,7 @@ func (qs QuorumSystem) MakeStrategy(sigmaR Sigma, sigmaW Sigma) (Strategy, error
 			SigmaRecord{Quorum: value.Quorum, Probability: value.Probability / totalSigmaW})
 	}
 
-	return Strategy{SigmaR: Sigma{Values: normalizedSigmaR}, SigmaW: Sigma{Values: normalizedSigmaW}}, nil
+	return DefStrategy(qs, Sigma{Values: normalizedSigmaR}, Sigma{Values: normalizedSigmaW}), nil
 }
 
 func (qs QuorumSystem) minimize(sets []ExprSet) []ExprSet {
