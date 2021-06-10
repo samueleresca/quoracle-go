@@ -280,8 +280,8 @@ func TestOptimalStrategyLoad(t *testing.T) {
 	const float64EqualityThreshold = 1e-9
 
 	a, b, c, d :=
-		DefNodeWithCapacity("a", 2, 1, 1), DefNodeWithCapacity("b", 2, 1, 2),
-		DefNodeWithCapacity("c", 2, 1, 3), DefNodeWithCapacity("d", 2, 1, 4)
+		DefNodeWithCapacityAndLatency("a", 2, 1, 1), DefNodeWithCapacityAndLatency("b", 2, 1, 2),
+		DefNodeWithCapacityAndLatency("c", 2, 1, 3), DefNodeWithCapacityAndLatency("d", 2, 1, 4)
 
 	qs := DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
 
@@ -410,8 +410,8 @@ func TestOptimalStrategyNetwork(t *testing.T) {
 	const float64EqualityThreshold = 1e-9
 
 	a, b, c, d :=
-		DefNodeWithCapacity("a", 2, 1, 1), DefNodeWithCapacity("b", 2, 1, 2),
-		DefNodeWithCapacity("c", 2, 1, 3), DefNodeWithCapacity("d", 2, 1, 4)
+		DefNodeWithCapacityAndLatency("a", 2, 1, 1), DefNodeWithCapacityAndLatency("b", 2, 1, 2),
+		DefNodeWithCapacityAndLatency("c", 2, 1, 3), DefNodeWithCapacityAndLatency("d", 2, 1, 4)
 
 	qs := DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
 
@@ -498,8 +498,8 @@ func TestOptimalStrategyLatency(t *testing.T) {
 	const float64EqualityThreshold = 1e-9
 
 	a, b, c, d :=
-		DefNodeWithCapacity("a", 2, 1, 1), DefNodeWithCapacity("b", 2, 1, 2),
-		DefNodeWithCapacity("c", 2, 1, 3), DefNodeWithCapacity("d", 2, 1, 4)
+		DefNodeWithCapacityAndLatency("a", 2, 1, 1), DefNodeWithCapacityAndLatency("b", 2, 1, 2),
+		DefNodeWithCapacityAndLatency("c", 2, 1, 3), DefNodeWithCapacityAndLatency("d", 2, 1, 4)
 
 	qs := DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
 
@@ -591,8 +591,8 @@ func TestOptimalStrategyLatency(t *testing.T) {
 
 func TestOptimalStrategyIllegalSpecs(t *testing.T) {
 	a, b, c, d :=
-		DefNodeWithCapacity("a", 2, 1, 1), DefNodeWithCapacity("b", 2, 1, 2),
-		DefNodeWithCapacity("c", 2, 1, 3), DefNodeWithCapacity("d", 2, 1, 4)
+		DefNodeWithCapacityAndLatency("a", 2, 1, 1), DefNodeWithCapacityAndLatency("b", 2, 1, 2),
+		DefNodeWithCapacityAndLatency("c", 2, 1, 3), DefNodeWithCapacityAndLatency("d", 2, 1, 4)
 
 	qs := DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
 
@@ -636,8 +636,8 @@ func TestOptimalStrategyIllegalSpecs(t *testing.T) {
 
 func TestOptimalStrategyUnsatisfiableConstraints(t *testing.T) {
 	a, b, c, d :=
-		DefNodeWithCapacity("a", 2, 1, 1), DefNodeWithCapacity("b", 2, 1, 2),
-		DefNodeWithCapacity("c", 2, 1, 3), DefNodeWithCapacity("d", 2, 1, 4)
+		DefNodeWithCapacityAndLatency("a", 2, 1, 1), DefNodeWithCapacityAndLatency("b", 2, 1, 2),
+		DefNodeWithCapacityAndLatency("c", 2, 1, 3), DefNodeWithCapacityAndLatency("d", 2, 1, 4)
 
 	qs := DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
 

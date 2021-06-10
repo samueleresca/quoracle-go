@@ -52,13 +52,23 @@ func DefNode(name string) Node {
 	return node
 }
 
-func DefNodeWithCapacity(name string, readCapacity uint, writeCapacity uint, latency uint) Node {
+func DefNodeWithCapacityAndLatency(name string, readCapacity uint, writeCapacity uint, latency uint) Node {
 	node := Node{}
 
 	node.Name = name
 	node.ReadCapacity = &readCapacity
 	node.WriteCapacity = &writeCapacity
 	node.Latency = &latency
+
+	return node
+}
+
+func DefNodeWithCapacity(name string, readCapacity uint, writeCapacity uint) Node {
+	node := Node{}
+
+	node.Name = name
+	node.ReadCapacity = &readCapacity
+	node.WriteCapacity = &writeCapacity
 
 	return node
 }
