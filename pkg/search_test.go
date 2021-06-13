@@ -121,6 +121,32 @@ func TestDupFreePartitions(t *testing.T) {
 		index++
 	}
 
-	fmt.Println(a, b, c, d)
 
+	expected = [][][]string{
+		{{"a"}, {"b"}, {"c"}},
+		{{"a", "b"}, {"b", "c"}, {"c", "a"}},
+		{{"a", "b", "c"}},
+	}
+
+	index = 0
+
+	for e := range dupFreeExprs([]GenericExpr{a, b, c}, 1) {
+		assertQuorums(e, expected[index])
+		index++
+	}
+
+
+	expected = [][][]string{
+		{{"a"}, {"b"}, {"c"}, {"d"}},
+		{{"a", "b"}, {"b", "c"}, {"c", "a"}, {"a", "d"}, {"b", "d"}, {"c", "d"}},
+		{{"a", "b", "c"}, {"a", "b", "d"}, {"b", "c", "d"}, {"a", "c", "d"}},
+		{{"a", "b", "c", "d"}},
+	}
+
+	index = 0
+
+	for e := range dupFreeExprs([]GenericExpr{a, b, c, d}, 1) {
+		assertQuorums(e, expected[index])
+		index++
+	}
 }
