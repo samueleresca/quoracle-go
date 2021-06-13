@@ -5,7 +5,10 @@ For more information check the original paper [Read-Write Quorum Systems Made Pr
 
 ## Requirements
 
-[ADD_REQUIREMENTS]
+This projects depends on [lanl/clp](https://github.com/lanl/clp) to solve the linear optimization projects.
+The [lanl/clp](https://github.com/lanl/clp) relies on `clp`, which needs to be installed on your machine using the following instructions:
+
+[CLP download binaries](https://github.com/coin-or/Clp#binaries)
 
 ## Getting started
 
@@ -36,3 +39,5 @@ load, _ := qs.Load(strategyOptions)
 
 - [Read-Write Quorum Systems Made Practical - Michael Whittaker, Aleksey Charapko, Joseph M. Hellerstein, Heidi Howard, Ion Stoica](https://mwhittaker.github.io/publications/quoracle.pdf)
 - [mwhittaker/quoracle](https://github.com/mwhittaker/quoracle)
+- [github.com/lanl/clp](https://github.com/lanl/clp)
+- [coin-or/clp](https://github.com/coin-or/Clp)
