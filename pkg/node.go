@@ -98,7 +98,6 @@ func (n Node) Quorums() chan ExprSet {
 
 	go func() {
 		chnl <- ExprSet{n: true}
-		// Ensure that at the end of the loop we close the channel!
 		close(chnl)
 	}()
 

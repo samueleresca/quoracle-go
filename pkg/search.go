@@ -1,36 +1,42 @@
 package pkg
 
 func partitionings(xs []GenericExpr) chan [][]GenericExpr {
+
 	return partitioningsHelper(xs)
+
 }
 
 func partitioningsHelper(xs []GenericExpr) chan [][]GenericExpr {
 	chnl := make(chan [][]GenericExpr)
-
 	if len(xs) == 0 {
-		close(chnl)
+		go func() {
+			chnl <- [][]GenericExpr{}
+			close(chnl)
+		}()
 		return chnl
 	}
 
 	x := xs[0]
+	rest := xs[1:]
 
-	for partition := range partitioningsHelper(xs[1:]) {
-		newPartition := partition
-		newPartition = append(newPartition, []GenericExpr{x})
+	go func() {
+		for partition := range partitioningsHelper(rest) {
+			newPartition := partition
+			newPartition = append([][]GenericExpr{{x}}, newPartition...)
 
-		chnl <- newPartition
+			chnl <- newPartition
 
-		for i := 0; i < len(partition); i++ {
-			result := make([][]GenericExpr, 0)
-			pp := partition[:i]
-			result = append(result, pp...)
-			result = append(result, append(partition[i+1:], []GenericExpr{x})...)
+			for i := 0; i < len(partition); i++ {
+				result := make([][]GenericExpr, 0)
+				result = append(result, partition[:i]...)
+				result = append(result, append([]GenericExpr{x}, partition[i]...))
 
-			chnl <- append(result, partition[i+1:]...)
+				chnl <- append(result, partition[i+1:]...)
+
+			}
 		}
-	}
-
-	close(chnl)
+		close(chnl)
+	}()
 	return chnl
 }
 
