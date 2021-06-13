@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"gotest.tools/assert"
 	"reflect"
+	"sort"
+	"strings"
 	"testing"
 )
 
@@ -66,4 +68,59 @@ func TestPartitions(t *testing.T) {
 		assert.Assert(t, ok == true, actual)
 		index++
 	}
+}
+
+func TestDupFreePartitions(t *testing.T) {
+	a, b, c, d := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d")
+
+	assertQuorums := func(e GenericExpr, xs [][]string) {
+		actual := make([]string, 0)
+
+		for q := range e.Quorums() {
+			var tmp []string
+
+			for n := range q {
+				tmp = append(tmp, n.String())
+			}
+			sort.Strings(tmp)
+			actual = append(actual, strings.Join(tmp, ""))
+		}
+
+		var expected []string
+
+		for _, x := range xs {
+			sort.Strings(x)
+			expected = append(expected, strings.Join(x, ""))
+		}
+
+		sort.Strings(actual)
+		sort.Strings(expected)
+
+		assert.Assert(t, reflect.DeepEqual(actual, expected) == true, fmt.Sprintf("assertQuorums - Actual: %v | Expected  %v", actual, expected))
+	}
+
+	expected := [][][]string{
+		{{"a"}},
+	}
+
+	index := 0
+
+	for e := range dupFreeExprs([]GenericExpr{a}, 0) {
+		assertQuorums(e, expected[index])
+		index++
+	}
+
+	expected = [][][]string{
+		{{"a"}, {"b"}}, {{"a", "b"}},
+	}
+
+	index = 0
+
+	for e := range dupFreeExprs([]GenericExpr{a, b}, 0) {
+		assertQuorums(e, expected[index])
+		index++
+	}
+
+	fmt.Println(a, b, c, d)
+
 }

@@ -1,9 +1,7 @@
 package pkg
 
 func partitionings(xs []GenericExpr) chan [][]GenericExpr {
-
 	return partitioningsHelper(xs)
-
 }
 
 func partitioningsHelper(xs []GenericExpr) chan [][]GenericExpr {
@@ -44,40 +42,62 @@ func dupFreeExprs(nodes []GenericExpr, maxHeight int) chan GenericExpr {
 	chnl := make(chan GenericExpr, 0)
 
 	if len(nodes) == 1 {
-		chnl <- nodes[0]
 
-		close(chnl)
+		go func() {
+			chnl <- nodes[0]
+			close(chnl)
+		}()
+
 		return chnl
 	}
 
 	if maxHeight == 1 {
-		for k := 1; k < len(nodes)+1; k++ {
-			choose, _ := DefChoose(k, nodes)
-			chnl <- choose
-		}
-		close(chnl)
+
+		go func() {
+			for k := 1; k < len(nodes)+1; k++ {
+				choose, _ := DefChoose(k, nodes)
+				chnl <- choose
+			}
+			close(chnl)
+		}()
+
 		return chnl
 	}
 
-	for partitioning := range partitionings(nodes) {
-		if len(partitioning) == 1 {
-			continue
-		}
+	go func() {
+		for partitioning := range partitionings(nodes) {
+			if len(partitioning) == 1 {
+				continue
+			}
 
-		subiterators := make([]GenericExpr, 0)
+			subiterators := make([][]interface{}, 0)
 
-		for _, p := range partitioning {
-			subiterators = append(subiterators, <-dupFreeExprs(p, maxHeight-1))
-		}
+			for _, p := range partitioning {
+				tmp := make([]interface{}, 0)
+				for e := range dupFreeExprs(p, maxHeight-1) {
+					tmp = append(tmp, e)
+				}
 
-		for _, subexprs := range product(subiterators) {
-			for k := 1; k < len(subexprs)+1; k++ {
-				result, _ := DefChoose(k, subexprs)
-				chnl <- result
+				subiterators = append(subiterators, tmp)
+			}
+
+			for _, subexprs := range productInterfaces(subiterators...) {
+
+				exprs := make([]GenericExpr, 0)
+
+				for _, se := range subexprs {
+					exprs = append(exprs, se.(GenericExpr))
+				}
+
+				for k := 1; k < len(subexprs)+1; k++ {
+					result, _ := DefChoose(k, exprs)
+					chnl <- result
+				}
 			}
 		}
-	}
 
-	close(chnl)
+		close(chnl)
+	}()
+
 	return chnl
 }
