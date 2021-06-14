@@ -1,5 +1,41 @@
 package pkg
 
+import "fmt"
+
+type SearchOptions struct {
+	Optimize      OptimizeType
+	ReadFraction  Distribution
+	WriteFraction Distribution
+	Resilience    uint
+	F             int
+	TimeoutSecs   int
+	LoadLimit     *float64
+	NetworkLimit  *float64
+	LatencyLimit  *float64
+}
+
+type SearchResult struct {
+	QuorumSystem QuorumSystem
+	Strategy     Strategy
+}
+
+func initSearchOptions(initOptions SearchOptions) func(options *SearchOptions) error {
+	init := func(options *SearchOptions) error {
+		options.Optimize = initOptions.Optimize
+		options.LatencyLimit = initOptions.LatencyLimit
+		options.NetworkLimit = initOptions.NetworkLimit
+		options.LoadLimit = initOptions.LoadLimit
+		options.F = initOptions.F
+		options.ReadFraction = initOptions.ReadFraction
+		options.WriteFraction = initOptions.WriteFraction
+		options.TimeoutSecs = initOptions.TimeoutSecs
+		options.Resilience = initOptions.Resilience
+
+		return nil
+	}
+	return init
+}
+
 func partitionings(xs []GenericExpr) chan [][]GenericExpr {
 	return partitioningsHelper(xs)
 }
@@ -100,4 +136,78 @@ func dupFreeExprs(nodes []GenericExpr, maxHeight int) chan GenericExpr {
 	}()
 
 	return chnl
+}
+
+func performQuorumSearch(nodes []GenericExpr, opts ...func(options *SearchOptions) error) (SearchResult, error) {
+
+	sb := &SearchOptions{}
+	// ... (write initializations with default values)...
+	for _, op := range opts {
+		err := op(sb)
+		if err != nil {
+			return SearchResult{}, err
+		}
+	}
+
+	metric := func(sigma Strategy) (*float64, error) {
+		if sb.Optimize == Load {
+			return sigma.Load(&sb.ReadFraction, &sb.WriteFraction)
+		} else if sb.Optimize == Network {
+			return sigma.NetworkLoad(&sb.ReadFraction, &sb.WriteFraction)
+		} else {
+			return sigma.Latency(&sb.ReadFraction, &sb.WriteFraction)
+		}
+	}
+
+	var optQS *QuorumSystem = nil
+	var optSigma *Strategy = nil
+	var optMetric *float64 = nil
+
+	doSearch := func(exprs chan GenericExpr) {
+
+		for r := range exprs {
+			qs := DefQuorumSystemWithReads(r)
+
+			if qs.Resilience() < sb.Resilience {
+				continue
+			}
+
+			stratOpts := StrategyOptions{
+				Optimize:      sb.Optimize,
+				LoadLimit:     sb.LoadLimit,
+				NetworkLimit:  sb.NetworkLimit,
+				LatencyLimit:  sb.LatencyLimit,
+				ReadFraction:  sb.ReadFraction,
+				WriteFraction: sb.WriteFraction,
+				F:             sb.F,
+			}
+
+			sigma, _ := qs.Strategy(initStrategyOptions(stratOpts))
+			sigmaMetric, _ := metric(*sigma)
+
+			if optMetric == nil || *sigmaMetric < *optMetric {
+				optQS = &qs
+				optSigma = sigma
+				optMetric = sigmaMetric
+			}
+
+		}
+	}
+
+	doSearch(dupFreeExprs(nodes, 2))
+	doSearch(dupFreeExprs(nodes, 0))
+
+	if optQS == nil {
+		return SearchResult{}, fmt.Errorf("Error")
+	}
+
+	return SearchResult{
+		QuorumSystem: *optQS,
+		Strategy:     *optSigma,
+	}, nil
+
+}
+
+func Search(nodes []GenericExpr, option SearchOptions) (SearchResult, error) {
+	return performQuorumSearch(nodes, initSearchOptions(option))
 }

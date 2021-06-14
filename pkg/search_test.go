@@ -121,7 +121,6 @@ func TestDupFreePartitions(t *testing.T) {
 		index++
 	}
 
-
 	expected = [][][]string{
 		{{"a"}, {"b"}, {"c"}},
 		{{"a", "b"}, {"b", "c"}, {"c", "a"}},
@@ -134,7 +133,6 @@ func TestDupFreePartitions(t *testing.T) {
 		assertQuorums(e, expected[index])
 		index++
 	}
-
 
 	expected = [][][]string{
 		{{"a"}, {"b"}, {"c"}, {"d"}},
@@ -150,4 +148,3 @@ func TestDupFreePartitions(t *testing.T) {
 		index++
 	}
 }
-
