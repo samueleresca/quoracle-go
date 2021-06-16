@@ -278,6 +278,10 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 		wq = append(wq, e)
 	}
 
+	if len(rq) == 0 || len(wq) == 0 {
+		return nil, fmt.Errorf("There are no %d-resilient read quorums", sb.F)
+	}
+
 	return qs.loadOptimalStrategy(sb.Optimize, rq, wq, d,
 		sb.LoadLimit, sb.NetworkLimit, sb.LatencyLimit)
 }

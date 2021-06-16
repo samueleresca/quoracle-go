@@ -149,29 +149,52 @@ func TestDupFreePartitions(t *testing.T) {
 	}
 }
 
-
-func TestSearch(t *testing.T){
-	a, b, c := DefNodeWithCapacityAndLatency("a", 1, 1, 2),
+func TestSearch(t *testing.T) {
+	a, b, c, e, d, f := DefNodeWithCapacityAndLatency("a", 1, 1, 2),
 		DefNodeWithCapacityAndLatency("b", 1, 1, 1),
-		DefNodeWithCapacityAndLatency("c", 1, 1, 2)
+		DefNodeWithCapacityAndLatency("c", 1, 1, 2),
+		DefNodeWithCapacityAndLatency("d", 2, 2, 1),
+		DefNodeWithCapacityAndLatency("e", 1, 1, 2),
+		DefNodeWithCapacityAndLatency("f", 2, 2, 1)
 
-	for _, fr := range []float64 { 0, 0.5, 1}{
-		_, err := Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Load, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}} } )
+	for _, fr := range []float64{0, 0.5, 1} {
+		_, err := Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}})
 		assert.Assert(t, err == nil)
 
-		_, err = Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Network, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}} })
+		_, err = Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Network, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}})
 		assert.Assert(t, err == nil)
 
-  		_, err = Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Latency, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}}})
-  		assert.Assert(t, err == nil, err)
-
-		_, err = Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Load, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}}, F: 0, Resilience : 1.0})
+		_, err = Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Latency, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}})
 		assert.Assert(t, err == nil, err)
 
-	 ///	_, err = Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Load, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}}, F: 1.0, Resilience: 0.0})
-		//assert.Assert(t, err == nil, err)
+		_, err = Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}, F: 0, Resilience: 1.0})
+		assert.Assert(t, err == nil, err)
+
+		_, err = Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}, F: 1.0, Resilience: 0.0})
+		assert.Assert(t, err == nil, err)
 	}
 
+	networkLimit := 3.0
+	latencyLimit := 2.0
+	_, err := Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{map[Fraction]Weight{0.25: 1.0}}, NetworkLimit: &networkLimit, LatencyLimit: &latencyLimit})
+	assert.Assert(t, err == nil)
 
+	timeoutSecs := 0.25
+	for _, fr := range []float64{0, 0.5} {
+		_, err := Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}, TimeoutSecs: timeoutSecs})
+		assert.Assert(t, err == nil)
+
+		_, err = Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Network, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}, TimeoutSecs: timeoutSecs})
+		assert.Assert(t, err == nil)
+
+		_, err = Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Latency, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}, TimeoutSecs: timeoutSecs})
+		assert.Assert(t, err == nil, err)
+
+		_, err = Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}, F: 0, Resilience: 1.0, TimeoutSecs: timeoutSecs})
+		assert.Assert(t, err == nil, err)
+
+		_, err = Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}, F: 1.0, Resilience: 0.0, TimeoutSecs: timeoutSecs})
+		assert.Assert(t, err == nil, err)
+	}
 
 }

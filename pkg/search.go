@@ -1,6 +1,9 @@
 package pkg
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 type SearchOptions struct {
 	Optimize      OptimizeType
@@ -8,7 +11,7 @@ type SearchOptions struct {
 	WriteFraction Distribution
 	Resilience    uint
 	F             int
-	TimeoutSecs   int
+	TimeoutSecs   float64
 	LoadLimit     *float64
 	NetworkLimit  *float64
 	LatencyLimit  *float64
@@ -149,6 +152,8 @@ func performQuorumSearch(nodes []GenericExpr, opts ...func(options *SearchOption
 		}
 	}
 
+	start := time.Now()
+
 	metric := func(sigma Strategy) (*float64, error) {
 		if sb.Optimize == Load {
 			return sigma.Load(&sb.ReadFraction, &sb.WriteFraction)
@@ -167,13 +172,12 @@ func performQuorumSearch(nodes []GenericExpr, opts ...func(options *SearchOption
 
 		for r := range exprs {
 			qs := DefQuorumSystemWithReads(r)
-			fmt.Println(r)
 
 			if qs.Resilience() < sb.Resilience {
 				continue
 			}
 
-			stratOpts := StrategyOptions {
+			stratOpts := StrategyOptions{
 				Optimize:      sb.Optimize,
 				LoadLimit:     sb.LoadLimit,
 				NetworkLimit:  sb.NetworkLimit,
@@ -186,19 +190,29 @@ func performQuorumSearch(nodes []GenericExpr, opts ...func(options *SearchOption
 			sigma, err := qs.Strategy(initStrategyOptions(stratOpts))
 
 			if err != nil {
-				return fmt.Errorf("Strategy not found %s", err)
+				fmt.Printf("Strategy not found %s \n", err)
+				continue
 			}
 
 			sigmaMetric, err := metric(*sigma)
 
 			if err != nil {
-				return fmt.Errorf("Calc strategy err %s", err)
+				fmt.Printf("Calc strategy err %s \n", err)
+				continue
 			}
 
 			if optMetric == nil || *sigmaMetric < *optMetric {
 				optQS = &qs
 				optSigma = sigma
 				optMetric = sigmaMetric
+			}
+
+			t := time.Now()
+			elapsed := t.Sub(start)
+
+			if sb.TimeoutSecs != 0 && elapsed.Seconds() > sb.TimeoutSecs {
+				fmt.Printf("Timeout hit %f \n", sb.TimeoutSecs)
+				return nil
 			}
 
 		}
