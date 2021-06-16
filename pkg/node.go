@@ -21,6 +21,7 @@ type ExprOperator interface {
 
 type GenericExpr interface {
 	ExprOperator
+	fmt.Stringer
 	Quorums() chan ExprSet
 	IsQuorum(set ExprSet) bool
 	Nodes() NodeSet
@@ -28,7 +29,6 @@ type GenericExpr interface {
 	DupFreeMinFailures() uint
 	Resilience() uint
 	DupFree() bool
-	String() string
 	GetEs() []GenericExpr
 	Dual() GenericExpr
 }

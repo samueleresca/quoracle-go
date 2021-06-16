@@ -168,7 +168,10 @@ func TestSearch(t *testing.T){
 		_, err = Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Load, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}}, F: 0, Resilience : 1.0})
 		assert.Assert(t, err == nil, err)
 
-//		_, err = Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Load, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}}, F: 1.0, Resilience: 0.0})
-	//	assert.Assert(t, err == nil, err)
+	 ///	_, err = Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Load, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}}, F: 1.0, Resilience: 0.0})
+		//assert.Assert(t, err == nil, err)
 	}
+
+
+
 }
