@@ -40,7 +40,7 @@ type lpVariable struct {
 	UBound float64
 	LBound float64
 	Index  int
-	Quorum *ExprSet
+	Quorum ExprSet
 }
 
 func DefQuorumSystem(reads GenericExpr, writes GenericExpr) (QuorumSystem, error) {
@@ -154,7 +154,7 @@ func (qs QuorumSystem) ReadQuorums() chan ExprSet {
 
 func (qs QuorumSystem) WriteQuorums() chan ExprSet {
 	for t := range qs.Writes.Quorums() {
-		fmt.Println(t)
+		fmt.Println("Write quorums:", t)
 	}
 	return qs.Writes.Quorums()
 }
@@ -472,15 +472,19 @@ func copyExprSet(set ExprSet) ExprSet {
 }
 
 func (qs QuorumSystem) readQuorumLatency(quorum []Node) (*uint, error) {
+	fmt.Printf("Read")
 	return qs.quorumLatency(quorum, qs.IsReadQuorum)
 }
 
 func (qs QuorumSystem) writeQuorumLatency(quorum []Node) (*uint, error) {
+	fmt.Printf("Write")
 	return qs.quorumLatency(quorum, qs.IsWriteQuorum)
+
 }
 
 func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(set ExprSet) bool) (*uint, error) {
-
+	fmt.Printf("Quorum latency quorum %s\n", quorum)
+	fmt.Printf("Quorum latency reads: %s | &writes %s\n", qs.Reads, qs.Writes)
 	sortedQ := make([]Node, 0)
 
 	for _, q := range quorum {
@@ -551,11 +555,11 @@ func (qs QuorumSystem) loadOptimalStrategy(
 
 		// network_def  - inf <= network_def <= +inf
 		for _, v := range readQuorumVars {
-			tmp[v.Index] = fr * float64(len(*v.Quorum))
+			tmp[v.Index] = fr * float64(len(v.Quorum))
 		}
 
 		for _, v := range writeQuorumVars {
-			tmp[v.Index] = (1 - fr) * float64(len(*v.Quorum))
+			tmp[v.Index] = (1 - fr) * float64(len(v.Quorum))
 		}
 
 		tmp = append([]float64{ninf}, tmp...)
@@ -604,24 +608,34 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		for _, v := range readQuorumVars {
 			quorum := make([]Node, 0)
 
-			for x := range *v.Quorum {
+			for x := range v.Quorum {
 				q := qs.Node(x.String())
 				quorum = append(quorum, q)
 			}
 
-			l, _ := qs.readQuorumLatency(quorum)
+			l, err := qs.readQuorumLatency(quorum)
+
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("Error on readQuorumLatency %s.", err)
+			}
+
 			tmp[v.Index] = fr * v.Value * float64(*l)
 		}
 
 		for _, v := range writeQuorumVars {
 			quorum := make([]Node, 0)
 
-			for x := range *v.Quorum {
+			for x := range v.Quorum {
 				q := qs.Node(x.String())
 				quorum = append(quorum, q)
 			}
 
-			l, _ := qs.writeQuorumLatency(quorum)
+			l, err := qs.writeQuorumLatency(quorum)
+
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("Error on writeQuorumLatency %s", err)
+			}
+
 			tmp[v.Index] = (1 - fr) * v.Value * float64(*l)
 		}
 
@@ -756,13 +770,13 @@ func (qs QuorumSystem) loadOptimalStrategy(
 
 	for _, v := range readQuorumVars {
 		if soln[v.Index] != 0 {
-			readSigma = append(readSigma, SigmaRecord{Quorum: *v.Quorum, Probability: soln[v.Index]})
+			readSigma = append(readSigma, SigmaRecord{Quorum: v.Quorum, Probability: soln[v.Index]})
 		}
 	}
 
 	for _, v := range writeQuorumVars {
 		if soln[v.Index] != 0 {
-			writeSigma = append(writeSigma, SigmaRecord{Quorum: *v.Quorum, Probability: soln[v.Index]})
+			writeSigma = append(writeSigma, SigmaRecord{Quorum: v.Quorum, Probability: soln[v.Index]})
 		}
 	}
 
@@ -777,7 +791,7 @@ func defineOptimizationVars(readQuorums []ExprSet, writeQuorums []ExprSet) (read
 
 	for i, rq := range readQuorums {
 		q := rq
-		v := lpVariable{Name: fmt.Sprintf("r%b", i), UBound: 1, LBound: 0, Value: 1.0, Index: i, Quorum: &q}
+		v := lpVariable{Name: fmt.Sprintf("r%b", i), UBound: 1, LBound: 0, Value: 1.0, Index: i, Quorum: q}
 		readQuorumVars = append(readQuorumVars, v)
 
 		for n := range rq {
@@ -795,7 +809,7 @@ func defineOptimizationVars(readQuorums []ExprSet, writeQuorums []ExprSet) (read
 
 	for i, rq := range writeQuorums {
 		q := rq
-		v := lpVariable{Name: fmt.Sprintf("w%d", i), UBound: 1, LBound: 0, Value: 1.0, Index: len(readQuorums) + i, Quorum: &q}
+		v := lpVariable{Name: fmt.Sprintf("w%d", i), UBound: 1, LBound: 0, Value: 1.0, Index: len(readQuorums) + i, Quorum: q}
 		writeQuorumVars = append(writeQuorumVars, v)
 
 		for n := range rq {
@@ -1053,7 +1067,12 @@ func (s Strategy) Latency(rf *Distribution, wf *Distribution) (*float64, error) 
 			nodes = append(nodes, s.Qs.Node(n.String()))
 		}
 
-		v, _ := s.Qs.readQuorumLatency(nodes)
+		v, err := s.Qs.readQuorumLatency(nodes)
+
+		if err != nil {
+			return nil, err
+		}
+
 		reads += float64(*v) * rq.Probability
 	}
 
@@ -1066,7 +1085,11 @@ func (s Strategy) Latency(rf *Distribution, wf *Distribution) (*float64, error) 
 			nodes = append(nodes, s.Qs.Node(n.String()))
 		}
 
-		v, _ := s.Qs.writeQuorumLatency(nodes)
+		v, err := s.Qs.writeQuorumLatency(nodes)
+
+		if err != nil {
+			return nil, err
+		}
 		writes += float64(*v) * wq.Probability
 	}
 

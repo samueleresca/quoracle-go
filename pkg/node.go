@@ -105,14 +105,13 @@ func (n Node) Quorums() chan ExprSet {
 }
 
 func (n Node) IsQuorum(xs ExprSet) bool {
-	var found = false
 	for k := range xs {
 		if n.String() == k.String() {
-			found = true
-			return found
+			return true
 		}
 	}
-	return found
+
+	return false
 }
 
 func (n Node) Nodes() NodeSet {
@@ -298,20 +297,24 @@ func (e And) Multiply(rhs GenericExpr) And {
 
 func (e And) Quorums() chan ExprSet {
 	chnl := make(chan ExprSet)
-	flatQuorums := make([][]GenericExpr, 0)
+	flatQuorums := make([][]interface{}, 0)
 
 	for _, es := range e.Es {
-		tmp := make(ExprSet, 0)
+		quorums := make([]interface{}, 0)
 
 		for q := range es.Quorums() {
-			tmp = mergeGenericExprSets(tmp, q)
+			quorums = append(quorums, q)
 		}
-		flatQuorums = append(flatQuorums, exprMapToList(tmp))
+		flatQuorums = append(flatQuorums, quorums)
 	}
 
 	go func() {
-		for _, sets := range product(flatQuorums...) {
-			chnl <- exprListToMap(sets)
+		for _, sets := range productInterfaces(flatQuorums...) {
+			set := make(ExprSet)
+			for _, t := range sets {
+				set = mergeGenericExprSets(set, t.(ExprSet))
+			}
+			chnl <- set
 		}
 
 		// Ensure that at the end of the loop we close the channel!

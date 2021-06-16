@@ -156,10 +156,19 @@ func TestSearch(t *testing.T){
 		DefNodeWithCapacityAndLatency("c", 1, 1, 2)
 
 	for _, fr := range []float64 { 0, 0.5, 1}{
-		Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Load, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}} } )
-		Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Network, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}} })
-//		Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Latency, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}}})
-		Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Load, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}}, F: 0, Resilience : 1.0})
-		Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Load, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}}, F: 1.0, Resilience: 0.0})
+		_, err := Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Load, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}} } )
+		assert.Assert(t, err == nil)
+
+		_, err = Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Network, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}} })
+		assert.Assert(t, err == nil)
+
+  		_, err = Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Latency, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}}})
+  		assert.Assert(t, err == nil, err)
+
+		_, err = Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Load, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}}, F: 0, Resilience : 1.0})
+		assert.Assert(t, err == nil, err)
+
+//		_, err = Search([]GenericExpr{a, b, c}, SearchOptions{ Optimize: Load, ReadFraction: QuorumDistribution{ map[Fraction]Weight{fr: 1.0}}, F: 1.0, Resilience: 0.0})
+	//	assert.Assert(t, err == nil, err)
 	}
 }

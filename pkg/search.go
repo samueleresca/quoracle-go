@@ -163,16 +163,17 @@ func performQuorumSearch(nodes []GenericExpr, opts ...func(options *SearchOption
 	var optSigma *Strategy = nil
 	var optMetric *float64 = nil
 
-	doSearch := func(exprs chan GenericExpr) {
+	doSearch := func(exprs chan GenericExpr) error {
 
 		for r := range exprs {
 			qs := DefQuorumSystemWithReads(r)
+			fmt.Println(r)
 
 			if qs.Resilience() < sb.Resilience {
 				continue
 			}
 
-			stratOpts := StrategyOptions{
+			stratOpts := StrategyOptions {
 				Optimize:      sb.Optimize,
 				LoadLimit:     sb.LoadLimit,
 				NetworkLimit:  sb.NetworkLimit,
@@ -182,8 +183,17 @@ func performQuorumSearch(nodes []GenericExpr, opts ...func(options *SearchOption
 				F:             sb.F,
 			}
 
-			sigma, _ := qs.Strategy(initStrategyOptions(stratOpts))
-			sigmaMetric, _ := metric(*sigma)
+			sigma, err := qs.Strategy(initStrategyOptions(stratOpts))
+
+			if err != nil {
+				return fmt.Errorf("Strategy not found %s", err)
+			}
+
+			sigmaMetric, err := metric(*sigma)
+
+			if err != nil {
+				return fmt.Errorf("Calc strategy err %s", err)
+			}
 
 			if optMetric == nil || *sigmaMetric < *optMetric {
 				optQS = &qs
@@ -192,13 +202,24 @@ func performQuorumSearch(nodes []GenericExpr, opts ...func(options *SearchOption
 			}
 
 		}
+
+		return nil
 	}
 
-	doSearch(dupFreeExprs(nodes, 2))
-	doSearch(dupFreeExprs(nodes, 0))
+	err := doSearch(dupFreeExprs(nodes, 2))
+
+	if err != nil {
+		return SearchResult{}, err
+	}
+
+	err = doSearch(dupFreeExprs(nodes, 0))
+
+	if err != nil {
+		return SearchResult{}, err
+	}
 
 	if optQS == nil {
-		return SearchResult{}, fmt.Errorf("Error")
+		return SearchResult{}, fmt.Errorf("Error in search")
 	}
 
 	return SearchResult{

@@ -48,14 +48,15 @@ func TestQuorums(t *testing.T) {
 	assert.Assert(t, a.Multiply(b).Multiply(c).String() == "(a * b * c)")
 	assert.Assert(t, a.Add(b.Multiply(c)).String() == "(a + (b * c))")
 
-	assertQuorums(a.Multiply(b).Multiply(c), [][]string{{"a", "b", "c"}})
+	assertQuorums((a.Multiply(b)).Multiply(c), [][]string{{"a", "b", "c"}})
 	assertQuorums(a.Add(b).Add(c), [][]string{{"a"}, {"b"}, {"c"}})
-
+	assertQuorums(And{ Es: []GenericExpr{ And{Es: []GenericExpr{a,b}}, c}}, [][]string{{"a", "b", "c"}})
 	assertQuorums(a.Add(b.Multiply(c)), [][]string{{"a"}, {"b", "c"}})
 	assertQuorums(a.Multiply(a).Multiply(a), [][]string{{"a"}})
 	assertQuorums(a.Multiply(a.Add(b)), [][]string{{"a"}, {"a", "b"}})
 	assertQuorums(a.Multiply(a.Add(b)), [][]string{{"a"}, {"a", "b"}})
 	assertQuorums(a.Add(b).Multiply(a.Add(c)), [][]string{{"a"}, {"a", "c"}, {"a", "b"}, {"b", "c"}})
+
 	expr, _ := DefChoose(1, []GenericExpr{a, b, c})
 	assertQuorums(expr, [][]string{{"a"}, {"b"}, {"c"}})
 
@@ -103,6 +104,20 @@ func TestIsQuorum(t *testing.T) {
 	assertIsQuorum(expr, ExprSet{Node{Name: "b"}: true, Node{Name: "c"}: true})
 	assertIsNotQuorum(expr, ExprSet{})
 	assertIsNotQuorum(expr, ExprSet{Node{Name: "x"}: true})
+
+
+	chooseExp, _ := DefChoose(2, []GenericExpr{a, b, c})
+	assertIsQuorum(chooseExp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "c"}: true})
+	assertIsQuorum(chooseExp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "c"}: true, Node{Name: "x"}: true})
+	assertIsNotQuorum(chooseExp, ExprSet{})
+	assertIsNotQuorum(chooseExp, ExprSet{Node{Name: "a"}: true})
+	assertIsNotQuorum(chooseExp, ExprSet{Node{Name: "b"}: true})
+	assertIsNotQuorum(chooseExp, ExprSet{Node{Name: "c"}: true})
+	assertIsNotQuorum(chooseExp, ExprSet{Node{Name: "x"}: true})
+
+	assertIsQuorum(chooseExp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true})
+	assertIsQuorum(chooseExp, ExprSet{Node{Name: "a"}: true, Node{Name: "c"}: true})
+	assertIsQuorum(chooseExp, ExprSet{Node{Name: "b"}: true, Node{Name: "c"}: true})
 
 	exprAnd := a.Multiply(b).Multiply(c)
 	assertIsQuorum(exprAnd, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "c"}: true})
