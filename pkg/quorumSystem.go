@@ -169,7 +169,7 @@ func (qs QuorumSystem) ListReadQuorums() []ExprSet {
 func (qs QuorumSystem) ListWriteQuorums() []ExprSet {
 	wq := make([]ExprSet, 0)
 
-	for e := range qs.ReadQuorums() {
+	for e := range qs.WriteQuorums() {
 		wq = append(wq, e)
 	}
 
@@ -304,13 +304,8 @@ func (qs QuorumSystem) UniformStrategy(f int) (Strategy, error) {
 	if f < 0 {
 		return Strategy{}, fmt.Errorf("f must be >= 0")
 	} else if f == 0 {
-		for q := range qs.ReadQuorums() {
-			readQuorums = append(readQuorums, q)
-		}
-
-		for q := range qs.WriteQuorums() {
-			writeQuorums = append(writeQuorums, q)
-		}
+		readQuorums = qs.ListReadQuorums()
+		writeQuorums = qs.ListWriteQuorums()
 	}
 
 	readQuorums = qs.minimize(readQuorums)
@@ -461,7 +456,6 @@ func fResilientHelper(result []ExprSet, f int, xs []Node, e GenericExpr, s ExprS
 		s[xs[j]] = true
 		defer delete(s, xs[j])
 		return fResilientHelper(result, f, xs, e, copyExprSet(s), j+1)
-
 	}
 	return result
 }
