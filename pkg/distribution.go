@@ -7,15 +7,17 @@ type Weight = float64
 type Probability = float64
 
 type Distribution interface {
-	GetValue() map[Fraction]Weight
+	GetValue() DistributionValues
 	IsSingleValue() bool
 }
 
+type DistributionValues = map[Fraction]Weight
+
 type QuorumDistribution struct {
-	values map[Fraction]Weight
+	values DistributionValues
 }
 
-func (qd QuorumDistribution) GetValue() map[Fraction]Weight {
+func (qd QuorumDistribution) GetValue() DistributionValues {
 	return qd.values
 }
 

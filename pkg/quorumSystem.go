@@ -43,6 +43,12 @@ type lpVariable struct {
 	Quorum ExprSet
 }
 
+type lpDefinition struct {
+	Vars        []float64
+	Constraints [][2]float64
+	Objectives  [][]float64
+}
+
 func DefQuorumSystem(reads GenericExpr, writes GenericExpr) (QuorumSystem, error) {
 	optionalWrites := reads.Dual()
 
@@ -63,7 +69,7 @@ func DefQuorumSystem(reads GenericExpr, writes GenericExpr) (QuorumSystem, error
 }
 
 func DefQuorumSystemWithReads(reads GenericExpr) QuorumSystem {
-	qs := QuorumSystem{Reads: reads, Writes: reads.Dual()}
+	qs, _ := DefQuorumSystem(reads, reads.Dual())
 
 	qs.XtoNode = map[string]Node{}
 
@@ -87,7 +93,7 @@ func DefQuorumSystemWithWrites(writes GenericExpr) QuorumSystem {
 }
 
 func (qs QuorumSystem) String() string {
-	return ""
+	return "TODO"
 }
 
 func initStrategyOptions(initOptions StrategyOptions) func(options *StrategyOptions) error {
@@ -153,10 +159,27 @@ func (qs QuorumSystem) ReadQuorums() chan ExprSet {
 }
 
 func (qs QuorumSystem) WriteQuorums() chan ExprSet {
-	for t := range qs.Writes.Quorums() {
-		fmt.Println("Write quorums:", t)
-	}
 	return qs.Writes.Quorums()
+}
+
+func (qs QuorumSystem) ListReadQuorums() []ExprSet {
+	rq := make([]ExprSet, 0)
+
+	for e := range qs.ReadQuorums() {
+		rq = append(rq, e)
+	}
+
+	return rq
+}
+
+func (qs QuorumSystem) ListWriteQuorums() []ExprSet {
+	wq := make([]ExprSet, 0)
+
+	for e := range qs.WriteQuorums() {
+		wq = append(wq, e)
+	}
+
+	return wq
 }
 
 func (qs QuorumSystem) IsReadQuorum(xs ExprSet) bool {
@@ -195,13 +218,13 @@ func (qs QuorumSystem) Elements() []Node {
 
 func (qs QuorumSystem) Resilience() uint {
 	rr := qs.ReadResilience()
-	ww := qs.WriteResilience()
+	wr := qs.WriteResilience()
 
-	if rr < ww {
+	if rr < wr {
 		return rr
 	}
 
-	return ww
+	return wr
 }
 
 func (qs QuorumSystem) ReadResilience() uint {
@@ -243,16 +266,8 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 		return nil, fmt.Errorf("f must be >= 0")
 	}
 
-	rq := make([]ExprSet, 0)
-	wq := make([]ExprSet, 0)
-
-	for e := range qs.ReadQuorums() {
-		rq = append(rq, e)
-	}
-
-	for e := range qs.WriteQuorums() {
-		wq = append(wq, e)
-	}
+	rq := qs.ListReadQuorums()
+	wq := qs.ListWriteQuorums()
 
 	d, err := canonicalizeRW(&sb.ReadFraction, &sb.WriteFraction)
 
@@ -260,6 +275,7 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 		return nil, err
 	}
 
+	// no resilience target
 	if sb.F == 0 {
 		return qs.loadOptimalStrategy(sb.Optimize, rq, wq, d,
 			sb.LoadLimit, sb.NetworkLimit, sb.LatencyLimit)
@@ -279,7 +295,7 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 	}
 
 	if len(rq) == 0 || len(wq) == 0 {
-		return nil, fmt.Errorf("There are no %d-resilient read quorums", sb.F)
+		return nil, fmt.Errorf("There are no %d-resilient read quorums.", sb.F)
 	}
 
 	return qs.loadOptimalStrategy(sb.Optimize, rq, wq, d,
@@ -287,20 +303,14 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 }
 
 func (qs QuorumSystem) UniformStrategy(f int) (Strategy, error) {
-
 	readQuorums := make([]ExprSet, 0)
 	writeQuorums := make([]ExprSet, 0)
 
 	if f < 0 {
 		return Strategy{}, fmt.Errorf("f must be >= 0")
 	} else if f == 0 {
-		for q := range qs.ReadQuorums() {
-			readQuorums = append(readQuorums, q)
-		}
-
-		for q := range qs.WriteQuorums() {
-			writeQuorums = append(writeQuorums, q)
-		}
+		readQuorums = qs.ListReadQuorums()
+		writeQuorums = qs.ListWriteQuorums()
 	}
 
 	readQuorums = qs.minimize(readQuorums)
@@ -317,14 +327,14 @@ func (qs QuorumSystem) UniformStrategy(f int) (Strategy, error) {
 		sigmaW = append(sigmaW, SigmaRecord{q, 1 / float64(len(writeQuorums))})
 	}
 
-	return Strategy{SigmaR: Sigma{sigmaR}, SigmaW: Sigma{sigmaW}}, nil
+	return DefStrategy(qs, Sigma{sigmaR}, Sigma{sigmaW}), nil
 }
 
 func (qs QuorumSystem) MakeStrategy(sigmaR Sigma, sigmaW Sigma) (Strategy, error) {
 	normalizedSigmaR := make([]SigmaRecord, 0)
 	normalizedSigmaW := make([]SigmaRecord, 0)
 
-	allCheck := func(records []SigmaRecord, checkCondition func(record SigmaRecord) bool) bool {
+	all := func(records []SigmaRecord, checkCondition func(record SigmaRecord) bool) bool {
 		for _, r := range records {
 			if !checkCondition(r) {
 				return false
@@ -333,19 +343,19 @@ func (qs QuorumSystem) MakeStrategy(sigmaR Sigma, sigmaW Sigma) (Strategy, error
 		return true
 	}
 
-	if !allCheck(sigmaR.Values, func(r SigmaRecord) bool { return r.Probability >= 0 }) {
+	if !all(sigmaR.Values, func(r SigmaRecord) bool { return r.Probability >= 0 }) {
 		return Strategy{}, fmt.Errorf("SigmaR has negative weights")
 	}
 
-	if !allCheck(sigmaW.Values, func(r SigmaRecord) bool { return r.Probability >= 0 }) {
+	if !all(sigmaW.Values, func(r SigmaRecord) bool { return r.Probability >= 0 }) {
 		return Strategy{}, fmt.Errorf("SigmaW has negative weights")
 	}
 
-	if !allCheck(sigmaR.Values, func(r SigmaRecord) bool { return qs.IsReadQuorum(r.Quorum) }) {
+	if !all(sigmaR.Values, func(r SigmaRecord) bool { return qs.IsReadQuorum(r.Quorum) }) {
 		return Strategy{}, fmt.Errorf("SigmaR has non-read quorums")
 	}
 
-	if !allCheck(sigmaW.Values, func(w SigmaRecord) bool { return qs.IsWriteQuorum(w.Quorum) }) {
+	if !all(sigmaW.Values, func(w SigmaRecord) bool { return qs.IsWriteQuorum(w.Quorum) }) {
 		return Strategy{}, fmt.Errorf("SigmaW has non-write quorums")
 	}
 
@@ -451,7 +461,6 @@ func fResilientHelper(result []ExprSet, f int, xs []Node, e GenericExpr, s ExprS
 		s[xs[j]] = true
 		defer delete(s, xs[j])
 		return fResilientHelper(result, f, xs, e, copyExprSet(s), j+1)
-
 	}
 	return result
 }
@@ -476,19 +485,14 @@ func copyExprSet(set ExprSet) ExprSet {
 }
 
 func (qs QuorumSystem) readQuorumLatency(quorum []Node) (*uint, error) {
-	fmt.Printf("Read")
 	return qs.quorumLatency(quorum, qs.IsReadQuorum)
 }
 
 func (qs QuorumSystem) writeQuorumLatency(quorum []Node) (*uint, error) {
-	fmt.Printf("Write")
 	return qs.quorumLatency(quorum, qs.IsWriteQuorum)
-
 }
 
 func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(set ExprSet) bool) (*uint, error) {
-	fmt.Printf("Quorum latency quorum %s\n", quorum)
-	fmt.Printf("Quorum latency reads: %s | &writes %s\n", qs.Reads, qs.Writes)
 	sortedQ := make([]Node, 0)
 
 	for _, q := range quorum {
@@ -526,6 +530,9 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	networkLimit *float64,
 	latencyLimit *float64) (*Strategy, error) {
 
+	ninf := math.Inf(-1)
+	pinf := math.Inf(1)
+
 	readQuorumVars, xToReadQuorumVars, writeQuorumVars, xToWriteQuorumVars := defineOptimizationVars(readQuorums, writeQuorums)
 
 	fr := 0.0
@@ -534,80 +541,78 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		fr += k * v
 	}
 
-	network := func(networkLimit *float64) ([]float64, [][2]float64, [][]float64) {
-		vars := make([]float64, 0)
-		constr := make([][2]float64, 0)
-		obj := make([][]float64, 0)
-		ninf := math.Inf(-1)
-		pinf := math.Inf(1)
+	network := func(networkLimit *float64) lpDefinition {
+		def := lpDefinition{}
+		def.Vars = make([]float64, 0)
+		def.Constraints = make([][2]float64, 0)
+		def.Objectives = make([][]float64, 0)
 
 		// initializes target array
 		for _, v := range readQuorumVars {
-			vars = append(vars, 1.0)
+			def.Vars = append(def.Vars, 1.0)
 			b := [2]float64{v.LBound, v.UBound}
-			constr = append(constr, b)
+			def.Constraints = append(def.Constraints, b)
 
 		}
 		// add constraints 0 <= q <= 1
 		for _, v := range writeQuorumVars {
-			vars = append(vars, 1.0)
+			def.Vars = append(def.Vars, 1.0)
 			b := [2]float64{v.LBound, v.UBound}
-			constr = append(constr, b)
+			def.Constraints = append(def.Constraints, b)
 		}
 
-		tmp := make([]float64, len(vars))
+		objExpr := make([]float64, len(def.Vars))
 
 		// network_def  - inf <= network_def <= +inf
 		for _, v := range readQuorumVars {
-			tmp[v.Index] = fr * float64(len(v.Quorum))
+			objExpr[v.Index] = fr * float64(len(v.Quorum))
 		}
 
 		for _, v := range writeQuorumVars {
-			tmp[v.Index] = (1 - fr) * float64(len(v.Quorum))
+			objExpr[v.Index] = (1 - fr) * float64(len(v.Quorum))
 		}
 
-		tmp = append([]float64{ninf}, tmp...)
+		objExpr = append([]float64{ninf}, objExpr...)
 
 		if networkLimit == nil {
-			tmp = append(tmp, pinf)
+			objExpr = append(objExpr, pinf)
 		} else {
-			tmp = append(tmp, *networkLimit)
+			objExpr = append(objExpr, *networkLimit)
 		}
-		obj = append(obj, tmp)
 
-		return vars, constr, obj
+		def.Objectives = append(def.Objectives, objExpr)
+
+		return def
 	}
 
-	latency := func(latencyLimit *float64) ([]float64, [][2]float64, [][]float64, error) {
-		vars := make([]float64, 0)
-		constr := make([][2]float64, 0)
-		obj := make([][]float64, 0)
-		ninf := math.Inf(-1)
-		pinf := math.Inf(1)
+	latency := func(latencyLimit *float64) (lpDefinition, error) {
+		def := lpDefinition{}
+		def.Vars = make([]float64, 0)
+		def.Constraints = make([][2]float64, 0)
+		def.Objectives = make([][]float64, 0)
 
 		// initializes vars array
 		for range readQuorumVars {
-			vars = append(vars, 1.0)
+			def.Vars = append(def.Vars, 1.0)
 		}
 
 		for range writeQuorumVars {
-			vars = append(vars, 1.0)
+			def.Vars = append(def.Vars, 1.0)
 		}
-		// add constraints 0 <= q <= 1
 
+		// add constraints 0 <= q <= 1
 		for _, v := range readQuorumVars {
 			b := [2]float64{v.LBound, v.UBound}
-			constr = append(constr, b)
+			def.Constraints = append(def.Constraints, b)
 		}
 
 		for _, v := range writeQuorumVars {
 			b := [2]float64{v.LBound, v.UBound}
-			constr = append(constr, b)
+			def.Constraints = append(def.Constraints, b)
 		}
 
 		// building latency objs | -inf <= latency_def <= inf
-
-		tmp := make([]float64, len(vars))
+		objExpr := make([]float64, len(def.Vars))
 
 		for _, v := range readQuorumVars {
 			quorum := make([]Node, 0)
@@ -620,10 +625,10 @@ func (qs QuorumSystem) loadOptimalStrategy(
 			l, err := qs.readQuorumLatency(quorum)
 
 			if err != nil {
-				return nil, nil, nil, fmt.Errorf("Error on readQuorumLatency %s.", err)
+				return lpDefinition{}, fmt.Errorf("Error on readQuorumLatency %s.", err)
 			}
 
-			tmp[v.Index] = fr * v.Value * float64(*l)
+			objExpr[v.Index] = fr * v.Value * float64(*l)
 		}
 
 		for _, v := range writeQuorumVars {
@@ -637,53 +642,53 @@ func (qs QuorumSystem) loadOptimalStrategy(
 			l, err := qs.writeQuorumLatency(quorum)
 
 			if err != nil {
-				return nil, nil, nil, fmt.Errorf("Error on writeQuorumLatency %s", err)
+				return lpDefinition{}, fmt.Errorf("Error on writeQuorumLatency %s", err)
 			}
 
-			tmp[v.Index] = (1 - fr) * v.Value * float64(*l)
+			objExpr[v.Index] = (1 - fr) * v.Value * float64(*l)
 		}
 
-		tmp = append([]float64{ninf}, tmp...)
+		objExpr = append([]float64{ninf}, objExpr...)
 
 		if latencyLimit == nil {
-			tmp = append(tmp, pinf)
+			objExpr = append(objExpr, pinf)
 		} else {
-			tmp = append(tmp, *latencyLimit)
+			objExpr = append(objExpr, *latencyLimit)
 		}
-		obj = append(obj, tmp)
+		def.Objectives = append(def.Objectives, objExpr)
 
-		return vars, constr, obj, nil
+		return def, nil
 	}
 
-	frLoad := func(loadLimit *float64, fr float64) ([]float64, [][2]float64, [][]float64, error) {
-		vars := make([]float64, 0)
-		constr := make([][2]float64, 0)
-		ninf := math.Inf(-1)
-		pinf := math.Inf(1)
+	frLoad := func(loadLimit *float64, fr float64) (lpDefinition, error) {
+		def := lpDefinition{}
+		def.Vars = make([]float64, 0)
+		def.Constraints = make([][2]float64, 0)
+		def.Objectives = make([][]float64, 0)
 
 		// initializes target array
 		for _, v := range readQuorumVars {
-			vars = append(vars, 1.0)
+			def.Vars = append(def.Vars, 1.0)
 			b := [2]float64{v.LBound, v.UBound}
-			constr = append(constr, b)
+			def.Constraints = append(def.Constraints, b)
 
 		}
 		// add constraints 0 <= q <= 1
 		for _, v := range writeQuorumVars {
-			vars = append(vars, 1.0)
+			def.Vars = append(def.Vars, 1.0)
 			b := [2]float64{v.LBound, v.UBound}
-			constr = append(constr, b)
+			def.Constraints = append(def.Constraints, b)
 		}
 
 		// l def
-		vars = append(vars, 1.0)
+		def.Vars = append(def.Vars, 1.0)
 		b := [2]float64{ninf, pinf}
-		constr = append(constr, b)
+		def.Constraints = append(def.Constraints, b)
 
 		// Load formula
-		objectives := make([][]float64, 0)
+
 		for n := range qs.Nodes() {
-			tmp := make([]float64, len(vars))
+			tmp := make([]float64, len(def.Vars))
 
 			if _, ok := xToReadQuorumVars[n]; ok {
 				vs := xToReadQuorumVars[n]
@@ -699,66 +704,57 @@ func (qs QuorumSystem) loadOptimalStrategy(
 				}
 			}
 
-			objectives = append(objectives, tmp)
+			def.Objectives = append(def.Objectives, tmp)
 		}
-		return vars, constr, objectives, nil
+		return def, nil
 	}
 
 	simp := clp.NewSimplex()
 	simp.SetOptimizationDirection(clp.Minimize)
 
-	vars := make([]float64, 0)
-	constr := make([][2]float64, 0)
-	obj := make([][]float64, 0)
+	def := lpDefinition{}
+	def.Vars = make([]float64, 0)
+	def.Constraints = make([][2]float64, 0)
+	def.Objectives = make([][]float64, 0)
 
 	if optimize == Load {
-		vars, constr, obj = load(readFraction, vars, constr, loadLimit, frLoad)
+		def = load(readFraction, loadLimit, frLoad)
 	} else if optimize == Network {
-		vars, constr, obj = network(nil)
+		def = network(nil)
 	} else if optimize == Latency {
-		vars, constr, obj, _ = latency(nil)
+		def, _ = latency(nil)
 	}
 
 	readQConstraint, writeQConstraint := defineBaseConstraints(optimize, readQuorumVars, writeQuorumVars)
-	obj = append(obj, readQConstraint)
-	obj = append(obj, writeQConstraint)
+	def.Objectives = append(def.Objectives, readQConstraint)
+	def.Objectives = append(def.Objectives, writeQConstraint)
 
 	if loadLimit != nil {
-		_, _, lobj := load(readFraction, vars, constr, loadLimit, frLoad)
-		vars = append(vars, 0)
+		defTemp := load(readFraction, loadLimit, frLoad)
+		def.Vars = append(def.Vars, 0)
 
-		for r := 0; r < len(obj); r++ {
-			if len(obj[r]) != len(vars) {
-				obj[r] = insertAt(obj[r], len(obj[r])-1, 0.0)
+		for r := 0; r < len(def.Objectives); r++ {
+			if len(def.Objectives[r]) != len(def.Vars) {
+				def.Objectives[r] = insertAt(def.Objectives[r], len(def.Objectives[r])-1, 0.0)
 			}
 		}
 
-		b := [2]float64{math.Inf(-1), math.Inf(1)}
-		constr = append(constr, b)
-
-		obj = append(obj, lobj...)
+		b := [2]float64{ninf, pinf}
+		def.Constraints = append(def.Constraints, b)
+		def.Objectives = append(def.Objectives, defTemp.Objectives...)
 	}
 
 	if networkLimit != nil {
-		_, _, lobj := network(networkLimit)
-
-		if len(obj[0]) != len(lobj[0]) {
-			lobj[0] = insertAt(lobj[0], len(lobj[0])-1, 0)
-		}
-		obj = append(obj, lobj[0])
+		defTemp := network(networkLimit)
+		def.Objectives = appendObj(def.Objectives, defTemp.Objectives)
 	}
 
 	if latencyLimit != nil {
-		_, _, lobj, _ := latency(latencyLimit)
-
-		if len(obj[0]) != len(lobj[0]) {
-			lobj[0] = insertAt(lobj[0], len(lobj[0])-1, 0)
-		}
-
-		obj = append(obj, lobj[0])
+		defTemp, _ := latency(latencyLimit)
+		def.Objectives = appendObj(def.Objectives, defTemp.Objectives)
 	}
 
-	simp.EasyLoadDenseProblem(vars, constr, obj)
+	simp.EasyLoadDenseProblem(def.Vars, def.Constraints, def.Objectives)
 	// Solve the optimization problem.
 	status := simp.Primal(clp.NoValuesPass, clp.NoStartFinishOptions)
 	soln := simp.PrimalColumnSolution()
@@ -766,8 +762,6 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	if status != clp.Optimal {
 		return nil, fmt.Errorf("no optimal strategy found")
 	}
-
-	fmt.Println(soln)
 
 	readSigma := make([]SigmaRecord, 0)
 	writeSigma := make([]SigmaRecord, 0)
@@ -787,6 +781,16 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	newStrategy := DefStrategy(qs, Sigma{Values: readSigma}, Sigma{Values: writeSigma})
 
 	return &newStrategy, nil
+}
+
+func appendObj(obj [][]float64, lobj [][]float64) [][]float64 {
+
+	if len(obj[0]) != len(lobj[0]) {
+		lobj[0] = insertAt(lobj[0], len(lobj[0])-1, 0)
+	}
+	obj = append(obj, lobj[0])
+
+	return obj
 }
 
 func defineOptimizationVars(readQuorums []ExprSet, writeQuorums []ExprSet) (readQuorumVars []lpVariable, xToReadQuorumVars map[GenericExpr][]lpVariable, writeQuorumVars []lpVariable, xToWriteQuorumVars map[GenericExpr][]lpVariable) {
@@ -866,38 +870,33 @@ func defineBaseConstraints(optimize OptimizeType, readQuorumVars []lpVariable, w
 	return readQConstraint, writeQConstraint
 }
 
-func load(readFraction map[float64]float64, vars []float64, constr [][2]float64, loadLimit *float64,
-	frLoad func(loadLimit *float64, fr float64) ([]float64, [][2]float64, [][]float64, error)) ([]float64, [][2]float64, [][]float64) {
-	objTemp := make([][]float64, 0)
-	objs := make([][]float64, 0)
+func load(readFraction map[float64]float64, loadLimit *float64,
+	frLoad func(loadLimit *float64, fr float64) (lpDefinition, error)) lpDefinition {
+
+	def := lpDefinition{}
+	ninf := math.Inf(-1)
 
 	for fr, p := range readFraction {
-		vars, constr, objTemp, _ = frLoad(nil, fr)
+		def, _ = frLoad(nil, fr)
 
-		for r := 0; r < len(objTemp); r++ {
+		for r := 0; r < len(def.Objectives); r++ {
 
-			for c := 0; c < len(objTemp[r]); c++ {
-				objTemp[r][c] = objTemp[r][c] * p
+			for c := 0; c < len(def.Objectives[r]); c++ {
+				def.Objectives[r][c] = def.Objectives[r][c] * p
 			}
-
-			ninf := math.Inf(-1)
-
 			loadLimitValue := 1.0
 
 			if loadLimit != nil {
 				loadLimitValue = *loadLimit
 			}
 
-			objTemp[r] = append([]float64{ninf}, objTemp[r]...)
-			objTemp[r][len(objTemp[r])-1] = -loadLimitValue
-			objTemp[r] = append(objTemp[r], 0)
-
-			objs = append(objs, objTemp...)
+			def.Objectives[r] = append([]float64{ninf}, def.Objectives[r]...)
+			def.Objectives[r][len(def.Objectives[r])-1] = -loadLimitValue
+			def.Objectives[r] = append(def.Objectives[r], 0)
 		}
-
 	}
 
-	return vars, constr, objTemp
+	return def
 }
 
 func insertAt(a []float64, index int, value float64) []float64 {
@@ -951,7 +950,7 @@ func DefStrategy(quorumSystem QuorumSystem, sigmaR Sigma, sigmaW Sigma) Strategy
 }
 
 func (s Strategy) String() string {
-	return ""
+	return "TODO"
 }
 
 func (s Strategy) GetReadQuorum() ExprSet {
@@ -1005,7 +1004,7 @@ func (s Strategy) Load(rf *Distribution, wf *Distribution) (*float64, error) {
 	sum := 0.0
 
 	for fr, p := range d {
-		sum += p * s.maxload(fr)
+		sum += p * s.maxLoad(fr)
 	}
 	return &sum, nil
 }
@@ -1019,7 +1018,7 @@ func (s Strategy) Capacity(rf *Distribution, wf *Distribution) (*float64, error)
 	sum := 0.0
 
 	for fr, p := range d {
-		sum += p * 1.0 / s.maxload(fr)
+		sum += p * 1.0 / s.maxLoad(fr)
 	}
 	return &sum, nil
 }
@@ -1143,7 +1142,7 @@ func (s Strategy) NodeThroughput(node Node, rf *Distribution, wf *Distribution) 
 	return &sum, nil
 }
 
-func (s Strategy) maxload(fr float64) float64 {
+func (s Strategy) maxLoad(fr float64) float64 {
 	max := 0.0
 
 	for n := range s.Qs.Nodes() {
@@ -1162,11 +1161,11 @@ func (s Strategy) nodeLoad(node Node, fr float64) float64 {
 }
 
 func (s Strategy) nodeUtilization(node Node, fr float64) float64 {
-	return s.nodeLoad(node, fr) / s.maxload(fr)
+	return s.nodeLoad(node, fr) / s.maxLoad(fr)
 }
 
 func (s Strategy) nodeThroughput(node Node, fr float64) float64 {
-	capacity := 1 / s.maxload(fr)
+	capacity := 1 / s.maxLoad(fr)
 	fw := 1 - fr
 
 	return capacity * (fr*s.XReadProbability[node] + fw*s.XWriteProbability[node])

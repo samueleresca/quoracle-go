@@ -289,7 +289,7 @@ func TestOptimalStrategyLoad(t *testing.T) {
 	strategyOptions := StrategyOptions{
 		Optimize: Load,
 		ReadFraction: QuorumDistribution{
-			values: map[Fraction]Weight{1: 1}},
+			values: DistributionValues{1: 1}},
 	}
 
 	load, _ := qs.Load(strategyOptions)

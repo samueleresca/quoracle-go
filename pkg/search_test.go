@@ -158,27 +158,27 @@ func TestSearch(t *testing.T) {
 		DefNodeWithCapacityAndLatency("f", 2, 2, 1)
 
 	for _, fr := range []float64{0, 0.5, 1} {
-		result, err := Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}})
+		result, err := Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}})
 		assert.Assert(t, err == nil)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
-		result, err = Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Network, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}})
+		result, err = Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Network, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}})
 		assert.Assert(t, err == nil)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
-		result, err = Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Latency, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}})
+		result, err = Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Latency, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}})
 		assert.Assert(t, err == nil, err)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
-		result, err = Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}, F: 0, Resilience: 1.0})
+		result, err = Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, F: 0, Resilience: 1.0})
 		assert.Assert(t, err == nil, err)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
-		result, err = Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}, F: 1.0, Resilience: 0.0})
+		result, err = Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, F: 1.0, Resilience: 0.0})
 		assert.Assert(t, err == nil, err)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
@@ -187,34 +187,34 @@ func TestSearch(t *testing.T) {
 	networkLimit := 3.0
 	latencyLimit := 2.0
 
-	result, err := Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{map[Fraction]Weight{0.25: 1.0}}, NetworkLimit: &networkLimit, LatencyLimit: &latencyLimit})
+	result, err := Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{0.25: 1.0}}, NetworkLimit: &networkLimit, LatencyLimit: &latencyLimit})
 	assert.Assert(t, err == nil)
 	assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 	assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
 	timeoutSecs := 0.25
 	for _, fr := range []float64{0, 0.5} {
-		result, err := Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}, TimeoutSecs: timeoutSecs})
+		result, err := Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, TimeoutSecs: timeoutSecs})
 		assert.Assert(t, err == nil)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
-		result, err = Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Network, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}, TimeoutSecs: timeoutSecs})
+		result, err = Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Network, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, TimeoutSecs: timeoutSecs})
 		assert.Assert(t, err == nil)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
-		result, err = Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Latency, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}, TimeoutSecs: timeoutSecs})
+		result, err = Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Latency, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, TimeoutSecs: timeoutSecs})
 		assert.Assert(t, err == nil, err)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
-		result, err = Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}, F: 0, Resilience: 1.0, TimeoutSecs: timeoutSecs})
+		result, err = Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, F: 0, Resilience: 1.0, TimeoutSecs: timeoutSecs})
 		assert.Assert(t, err == nil, err)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
-		result, err = Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{map[Fraction]Weight{fr: 1.0}}, F: 1.0, Resilience: 0.0, TimeoutSecs: timeoutSecs})
+		result, err = Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, F: 1.0, Resilience: 0.0, TimeoutSecs: timeoutSecs})
 		assert.Assert(t, err == nil, err)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
