@@ -156,6 +156,26 @@ func (qs QuorumSystem) WriteQuorums() chan ExprSet {
 	return qs.Writes.Quorums()
 }
 
+func (qs QuorumSystem) ListReadQuorums() []ExprSet {
+	rq := make([]ExprSet, 0)
+
+	for e := range qs.ReadQuorums() {
+		rq = append(rq, e)
+	}
+
+	return rq
+}
+
+func (qs QuorumSystem) ListWriteQuorums() []ExprSet {
+	wq := make([]ExprSet, 0)
+
+	for e := range qs.ReadQuorums() {
+		wq = append(wq, e)
+	}
+
+	return wq
+}
+
 func (qs QuorumSystem) IsReadQuorum(xs ExprSet) bool {
 	return qs.Reads.IsQuorum(xs)
 }
@@ -240,16 +260,8 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 		return nil, fmt.Errorf("f must be >= 0")
 	}
 
-	rq := make([]ExprSet, 0)
-	wq := make([]ExprSet, 0)
-
-	for e := range qs.ReadQuorums() {
-		rq = append(rq, e)
-	}
-
-	for e := range qs.WriteQuorums() {
-		wq = append(wq, e)
-	}
+	rq := qs.ListReadQuorums()
+	wq := qs.ListWriteQuorums()
 
 	d, err := canonicalizeRW(&sb.ReadFraction, &sb.WriteFraction)
 
@@ -257,6 +269,7 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 		return nil, err
 	}
 
+	// no resilience target
 	if sb.F == 0 {
 		return qs.loadOptimalStrategy(sb.Optimize, rq, wq, d,
 			sb.LoadLimit, sb.NetworkLimit, sb.LatencyLimit)
@@ -276,7 +289,7 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 	}
 
 	if len(rq) == 0 || len(wq) == 0 {
-		return nil, fmt.Errorf("There are no %d-resilient read quorums", sb.F)
+		return nil, fmt.Errorf("There are no %d-resilient read quorums.", sb.F)
 	}
 
 	return qs.loadOptimalStrategy(sb.Optimize, rq, wq, d,
