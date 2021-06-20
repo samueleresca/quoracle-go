@@ -44,9 +44,9 @@ type lpVariable struct {
 }
 
 type lpDefinition struct {
-	Vars  []float64
+	Vars        []float64
 	Constraints [][2]float64
-	Objectives [][]float64
+	Objectives  [][]float64
 }
 
 func DefQuorumSystem(reads GenericExpr, writes GenericExpr) (QuorumSystem, error) {
@@ -69,7 +69,7 @@ func DefQuorumSystem(reads GenericExpr, writes GenericExpr) (QuorumSystem, error
 }
 
 func DefQuorumSystemWithReads(reads GenericExpr) QuorumSystem {
-	qs := QuorumSystem{Reads: reads, Writes: reads.Dual()}
+	qs, _ := DefQuorumSystem(reads, reads.Dual())
 
 	qs.XtoNode = map[string]Node{}
 
@@ -327,7 +327,7 @@ func (qs QuorumSystem) UniformStrategy(f int) (Strategy, error) {
 		sigmaW = append(sigmaW, SigmaRecord{q, 1 / float64(len(writeQuorums))})
 	}
 
-	return DefStrategy(qs,  Sigma{sigmaR},  Sigma{sigmaW}), nil
+	return DefStrategy(qs, Sigma{sigmaR}, Sigma{sigmaW}), nil
 }
 
 func (qs QuorumSystem) MakeStrategy(sigmaR Sigma, sigmaW Sigma) (Strategy, error) {
@@ -686,7 +686,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		def.Constraints = append(def.Constraints, b)
 
 		// Load formula
-	
+
 		for n := range qs.Nodes() {
 			tmp := make([]float64, len(def.Vars))
 
@@ -873,7 +873,7 @@ func defineBaseConstraints(optimize OptimizeType, readQuorumVars []lpVariable, w
 func load(readFraction map[float64]float64, loadLimit *float64,
 	frLoad func(loadLimit *float64, fr float64) (lpDefinition, error)) lpDefinition {
 
-	def :=  lpDefinition{}
+	def := lpDefinition{}
 	ninf := math.Inf(-1)
 
 	for fr, p := range readFraction {
