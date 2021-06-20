@@ -7,7 +7,7 @@ For more information check the original paper [Read-Write Quorum Systems Made Pr
 
 ## Requirements
 
-This projects depends on [lanl/clp](https://github.com/lanl/clp) to solve the linear optimization projects.
+This projects depends on [lanl/clp](https://github.com/lanl/clp) to solve the linear optimization problems.
 The [lanl/clp](https://github.com/lanl/clp) relies on `clp`, which needs to be installed on your machine using the following instructions:
 
 [CLP download binaries](https://github.com/coin-or/Clp#binaries)
