@@ -87,7 +87,7 @@ func DefQuorumSystemWithWrites(writes GenericExpr) QuorumSystem {
 }
 
 func (qs QuorumSystem) String() string {
-	return ""
+	return "TODO"
 }
 
 func initStrategyOptions(initOptions StrategyOptions) func(options *StrategyOptions) error {
@@ -153,9 +153,6 @@ func (qs QuorumSystem) ReadQuorums() chan ExprSet {
 }
 
 func (qs QuorumSystem) WriteQuorums() chan ExprSet {
-	for t := range qs.Writes.Quorums() {
-		fmt.Println("Write quorums:", t)
-	}
 	return qs.Writes.Quorums()
 }
 
@@ -195,13 +192,13 @@ func (qs QuorumSystem) Elements() []Node {
 
 func (qs QuorumSystem) Resilience() uint {
 	rr := qs.ReadResilience()
-	ww := qs.WriteResilience()
+	wr := qs.WriteResilience()
 
-	if rr < ww {
+	if rr < wr {
 		return rr
 	}
 
-	return ww
+	return wr
 }
 
 func (qs QuorumSystem) ReadResilience() uint {

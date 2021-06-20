@@ -10,7 +10,6 @@ import (
 )
 
 type ExprSet = map[GenericExpr]bool
-
 type NodeSet = map[Node]bool
 
 type ExprOperator interface {
