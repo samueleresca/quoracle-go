@@ -180,7 +180,6 @@ func TestLoadCapUtil(t *testing.T) {
 	}
 
 	// 0.5
-
 	cap05 := 1 / load05
 
 	nodeThroughputs05 := map[Node]float64{
