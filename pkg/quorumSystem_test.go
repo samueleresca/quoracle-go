@@ -53,7 +53,7 @@ func TestInit(t *testing.T) {
 
 	_, err := DefQuorumSystem(a.Add(b), a)
 
-	assert.Error(t, err, "Not all read quorums intersect all write quorums")
+	assert.Error(t, err, "not all read quorums intersect all write quorums")
 
 }
 
