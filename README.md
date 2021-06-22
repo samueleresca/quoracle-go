@@ -1,6 +1,7 @@
 # quoracle-go
 
 [![build](https://github.com/samueleresca/quoracle-go/actions/workflows/build.yml/badge.svg)](https://github.com/samueleresca/quoracle-go/actions/workflows/build.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/samueleresca/quoracle-go.svg)](https://pkg.go.dev/github.com/samueleresca/quoracle-go)
 
 A Golang port of [mwhittaker/quoracle](https://github.com/mwhittaker/quoracle).
 For more information check the original paper [Read-Write Quorum Systems Made Practical - Michael Whittaker, Aleksey Charapko, Joseph M. Hellerstein, Heidi Howard, Ion Stoica](https://mwhittaker.github.io/publications/quoracle.pdf).
