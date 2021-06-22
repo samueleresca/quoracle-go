@@ -1,4 +1,4 @@
-name: quoracle-go-build
+name: build
 
 on:
   push:
