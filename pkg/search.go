@@ -141,6 +141,10 @@ func dupFreeExprs(nodes []GenericExpr, maxHeight int) chan GenericExpr {
 	return chnl
 }
 
+func Search(nodes []GenericExpr, option SearchOptions) (SearchResult, error) {
+	return performQuorumSearch(nodes, initSearchOptions(option))
+}
+
 func performQuorumSearch(nodes []GenericExpr, opts ...func(options *SearchOptions) error) (SearchResult, error) {
 
 	sb := &SearchOptions{}
@@ -233,7 +237,7 @@ func performQuorumSearch(nodes []GenericExpr, opts ...func(options *SearchOption
 	}
 
 	if optQS == nil {
-		return SearchResult{}, fmt.Errorf("Error in search")
+		return SearchResult{}, fmt.Errorf("error in search")
 	}
 
 	return SearchResult{
@@ -243,6 +247,3 @@ func performQuorumSearch(nodes []GenericExpr, opts ...func(options *SearchOption
 
 }
 
-func Search(nodes []GenericExpr, option SearchOptions) (SearchResult, error) {
-	return performQuorumSearch(nodes, initSearchOptions(option))
-}

@@ -54,7 +54,7 @@ func DefQuorumSystem(reads GenericExpr, writes GenericExpr) (QuorumSystem, error
 
 	for k := range writes.Quorums() {
 		if !optionalWrites.IsQuorum(k) {
-			return QuorumSystem{}, fmt.Errorf("Not all read quorums intersect all write quorums")
+			return QuorumSystem{}, fmt.Errorf("not all read quorums intersect all write quorums")
 		}
 	}
 	qs := QuorumSystem{Reads: reads, Writes: writes}
@@ -295,7 +295,7 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 	}
 
 	if len(rq) == 0 || len(wq) == 0 {
-		return nil, fmt.Errorf("There are no %d-resilient read quorums.", sb.F)
+		return nil, fmt.Errorf("there are no %d-resilient read quorums", sb.F)
 	}
 
 	return qs.loadOptimalStrategy(sb.Optimize, rq, wq, d,
@@ -625,7 +625,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 			l, err := qs.readQuorumLatency(quorum)
 
 			if err != nil {
-				return lpDefinition{}, fmt.Errorf("Error on readQuorumLatency %s.", err)
+				return lpDefinition{}, fmt.Errorf("error on readQuorumLatency %s", err)
 			}
 
 			objExpr[v.Index] = fr * v.Value * float64(*l)

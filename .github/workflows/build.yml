@@ -3,13 +3,13 @@ name: quoracle-go-build
 on:
   push:
     branches:
-      - main
+      - master
       - release-*
     tags:
       - v*
   pull_request:
     branches:
-      - main
+      - master
       - release-*
 jobs:
   build:
