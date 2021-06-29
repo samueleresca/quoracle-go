@@ -762,7 +762,7 @@ func minHittingSet(quorums []ExprSet) uint {
 		obj = append(obj, 1)
 
 		for k := range xVars {
-			if _, exists := xs[k]; !exists {
+			if _, exists := xs[k]; exists {
 				obj = append(obj, 1)
 			} else {
 				obj = append(obj, 0)
