@@ -151,7 +151,7 @@ func TestIsQuorum(t *testing.T) {
 	assertIsNotQuorum(exprp, map[GenericExpr]bool{Node{Name: "x"}: true})
 }
 
-func Resilience(t *testing.T) {
+func TestResilience(t *testing.T) {
 	assertResilience := func(expr GenericExpr, n uint) {
 		const float64EqualityThreshold = 1e-6
 		actual := expr.Resilience()
