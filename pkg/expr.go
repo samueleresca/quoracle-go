@@ -731,7 +731,7 @@ func exprListToMap(input []GenericExpr) ExprSet {
 	return result
 }
 
-func minHittingSet(quorum []ExprSet) uint {
+func minHittingSet(quorums []ExprSet) uint {
 
 	xVars := make(map[GenericExpr]float64)
 
@@ -742,7 +742,7 @@ func minHittingSet(quorum []ExprSet) uint {
 
 	simp := clp.NewSimplex()
 
-	for _, xs := range quorum {
+	for _, xs := range quorums {
 		for k := range xs {
 			xVars[k] = 1.0
 		}
@@ -753,16 +753,16 @@ func minHittingSet(quorum []ExprSet) uint {
 	}
 
 	for range xVars {
-		constr := [][2]float64{{0, 1}}
-		def.Constraints = append(def.Constraints, constr...)
+		constr := [2]float64{0, 1}
+		def.Constraints = append(def.Constraints, constr)
 	}
 
-	for _, xs := range quorum {
+	for _, xs := range quorums {
 		obj := make([]float64, 0)
 		obj = append(obj, 1)
 
-		for k := range xs {
-			if _, in := xVars[k]; !in {
+		for k := range xVars {
+			if _, in := xs[k]; !in {
 				obj = append(obj, 1)
 			} else {
 				obj = append(obj, 0)
