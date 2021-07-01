@@ -734,6 +734,7 @@ func exprListToMap(input []GenericExpr) ExprSet {
 func minHittingSet(quorums []ExprSet) uint {
 
 	xVars := make(map[GenericExpr]float64)
+	listKeys := make([]GenericExpr, 0)
 
 	def := lpDefinition{}
 	def.Vars = make([]float64, 0)
@@ -744,15 +745,19 @@ func minHittingSet(quorums []ExprSet) uint {
 
 	for _, xs := range quorums {
 		for k := range xs {
+			if _, exists := xVars[k]; !exists{
+				listKeys = append(listKeys, k)
+			}
+
 			xVars[k] = 1.0
 		}
 	}
 
-	for range xVars {
+	for range listKeys {
 		def.Vars = append(def.Vars, 1.0)
 	}
 
-	for range xVars {
+	for range listKeys {
 		constr := [2]float64{0, 1}
 		def.Constraints = append(def.Constraints, constr)
 	}
@@ -761,7 +766,7 @@ func minHittingSet(quorums []ExprSet) uint {
 		obj := make([]float64, 0)
 		obj = append(obj, 1)
 
-		for k := range xVars {
+		for _, k := range listKeys {
 			if _, exists := xs[k]; exists {
 				obj = append(obj, 1)
 			} else {
@@ -772,6 +777,15 @@ func minHittingSet(quorums []ExprSet) uint {
 		obj = append(obj, math.Inf(1))
 		def.Objectives = append(def.Objectives, obj)
 	}
+
+	obj := make([]float64, 0)
+	obj = append(obj, math.Inf(-1))
+	for range listKeys {
+		obj = append(obj, 1)
+	}
+
+	obj = append(obj, math.Inf(1))
+	def.Objectives = append(def.Objectives, obj)
 
 	// Set up the optimization problem.
 
