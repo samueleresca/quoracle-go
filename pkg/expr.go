@@ -2,11 +2,12 @@ package pkg
 
 import (
 	"fmt"
-	"github.com/lanl/clp"
 	"math"
 	"math/bits"
 	"sort"
 	"strings"
+
+	"github.com/lanl/clp"
 )
 
 type ExprSet = map[GenericExpr]bool
@@ -730,58 +731,65 @@ func exprListToMap(input []GenericExpr) ExprSet {
 	return result
 }
 
-func minHittingSet(sets []ExprSet) uint {
+func minHittingSet(quorums []ExprSet) uint {
 
-	xVars := make(map[GenericExpr]float64)
-	x := make([]float64, 0)
-	constraints := make([][2]float64, 0)
-	obj := make([][]float64, 0)
-	//pinf := math.Inf(1)
+	keys := make([]GenericExpr, 0)
+
+	def := lpDefinition{}
+	def.Vars = make([]float64, 0)
+	def.Constraints = make([][2]float64, 0)
+	def.Objectives = make([][]float64, 0)
+
 	simp := clp.NewSimplex()
 
-	for _, xs := range sets {
+	uniqueKeys := make(map[GenericExpr]float64)
+
+	for _, xs := range quorums {
 		for k := range xs {
-			xVars[k] = 1.0
+			if _, exists := uniqueKeys[k]; !exists {
+				keys = append(keys, k)
+			}
+
+			uniqueKeys[k] = 1.0
 		}
 	}
 
-	for range xVars {
-		x = append(x, 1.0)
+	for range keys {
+		def.Vars = append(def.Vars, 1.0)
 	}
 
-	for range xVars {
-		tmp := [][2]float64{{0, 1}}
-		constraints = append(constraints, tmp...)
+	for range keys {
+		constr := [2]float64{0, 1}
+		def.Constraints = append(def.Constraints, constr)
 	}
 
-	for _, xs := range sets {
-		tmp := make([]float64, 0)
-		tmp = append(tmp, 1)
+	for _, xs := range quorums {
+		obj := make([]float64, 0)
+		obj = append(obj, 1)
 
-		for k := range xVars {
-			if _, ok := xs[k]; ok {
-				tmp = append(tmp, 1)
+		for _, k := range keys {
+			if _, exists := xs[k]; exists {
+				obj = append(obj, 1)
 			} else {
-				tmp = append(tmp, 0)
+				obj = append(obj, 0)
 			}
 		}
-		tmp = append(tmp, math.Inf(1))
-		obj = append(obj, tmp)
+
+		obj = append(obj, math.Inf(1))
+		def.Objectives = append(def.Objectives, obj)
 	}
 
 	// Set up the optimization problem.
-
 	simp.EasyLoadDenseProblem(
-		x,
-		constraints,
-		obj)
+		def.Vars,
+		def.Constraints,
+		def.Objectives)
 
 	simp.SetOptimizationDirection(clp.Minimize)
 
 	// Solve the optimization problem.
 	status := simp.Primal(clp.NoValuesPass, clp.NoStartFinishOptions)
 	soln := simp.PrimalColumnSolution()
-	fmt.Println(soln)
 
 	if status != clp.Optimal {
 		fmt.Println("Error")
