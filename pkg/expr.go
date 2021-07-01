@@ -637,31 +637,6 @@ func mergeGenericExprSets(maps ...ExprSet) ExprSet {
 	return result
 }
 
-// Cartesian product of lists, see: https://www.programmersought.com/article/95476401483/
-func product(sets ...[]GenericExpr) [][]GenericExpr {
-	nextIndex := func(ix []int, lens func(i int) int) {
-		for j := len(ix) - 1; j >= 0; j-- {
-			ix[j]++
-			if j == 0 || ix[j] < lens(j) {
-				return
-			}
-			ix[j] = 0
-		}
-	}
-
-	lens := func(i int) int { return len(sets[i]) }
-	var product [][]GenericExpr
-	for ix := make([]int, len(sets)); ix[0] < lens(0); nextIndex(ix, lens) {
-		var r []GenericExpr
-
-		for j, k := range ix {
-			r = append(r, sets[j][k])
-		}
-		product = append(product, r)
-	}
-	return product
-}
-
 func productInterfaces(sets ...[]interface{}) [][]interface{} {
 	result := make([][]interface{}, 0)
 	nextIndex := func(ix []int, lens func(i int) int) {
@@ -716,16 +691,6 @@ func exprMapToList(input ExprSet) []GenericExpr {
 
 	for k := range input {
 		result = append(result, k)
-	}
-
-	return result
-}
-
-func exprListToMap(input []GenericExpr) ExprSet {
-	result := make(ExprSet)
-
-	for _, k := range input {
-		result[k] = true
 	}
 
 	return result
