@@ -246,4 +246,3 @@ func performQuorumSearch(nodes []GenericExpr, opts ...func(options *SearchOption
 	}, nil
 
 }
-

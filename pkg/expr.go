@@ -733,8 +733,7 @@ func exprListToMap(input []GenericExpr) ExprSet {
 
 func minHittingSet(quorums []ExprSet) uint {
 
-	xVars := make(map[GenericExpr]float64)
-	listKeys := make([]GenericExpr, 0)
+	keys := make([]GenericExpr, 0)
 
 	def := lpDefinition{}
 	def.Vars = make([]float64, 0)
@@ -743,21 +742,23 @@ func minHittingSet(quorums []ExprSet) uint {
 
 	simp := clp.NewSimplex()
 
+	uniqueKeys := make(map[GenericExpr]float64)
+
 	for _, xs := range quorums {
 		for k := range xs {
-			if _, exists := xVars[k]; !exists{
-				listKeys = append(listKeys, k)
+			if _, exists := uniqueKeys[k]; !exists {
+				keys = append(keys, k)
 			}
 
-			xVars[k] = 1.0
+			uniqueKeys[k] = 1.0
 		}
 	}
 
-	for range listKeys {
+	for range keys {
 		def.Vars = append(def.Vars, 1.0)
 	}
 
-	for range listKeys {
+	for range keys {
 		constr := [2]float64{0, 1}
 		def.Constraints = append(def.Constraints, constr)
 	}
@@ -766,7 +767,7 @@ func minHittingSet(quorums []ExprSet) uint {
 		obj := make([]float64, 0)
 		obj = append(obj, 1)
 
-		for _, k := range listKeys {
+		for _, k := range keys {
 			if _, exists := xs[k]; exists {
 				obj = append(obj, 1)
 			} else {
@@ -778,17 +779,7 @@ func minHittingSet(quorums []ExprSet) uint {
 		def.Objectives = append(def.Objectives, obj)
 	}
 
-	obj := make([]float64, 0)
-	obj = append(obj, math.Inf(-1))
-	for range listKeys {
-		obj = append(obj, 1)
-	}
-
-	obj = append(obj, math.Inf(1))
-	def.Objectives = append(def.Objectives, obj)
-
 	// Set up the optimization problem.
-
 	simp.EasyLoadDenseProblem(
 		def.Vars,
 		def.Constraints,
