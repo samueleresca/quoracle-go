@@ -152,49 +152,57 @@ func TestIsQuorum(t *testing.T) {
 }
 
 func TestResilience(t *testing.T) {
+
+	a, b, c, d, e, f := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e"), DefNode("f")
+
 	assertResilience := func(expr GenericExpr, n uint) {
-		const float64EqualityThreshold = 1e-6
 		actual := expr.Resilience()
 		assert.Assert(t, actual == n, fmt.Sprintf("Actual: %d | Expected  %d", actual, n))
 	}
 
-	a, b, c, d, e, f := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e"), DefNode("f")
+	tests := []struct {
+		expr GenericExpr
+		expected uint
+	}{
+		{a, 0},
+		{a.Add(b), 1},
+		{a.Add(b).Add(c), 2},
+		{a.Add(b).Add(c).Add(d), 3},
+		{a.Multiply(b), 0},
+		{a.Multiply(b).Multiply(c), 0},
+		{a.Multiply(b).Multiply(c).Multiply(d), 0},
+		{a.Add(b).Multiply(c.Add(d)), 1},
+		{a.Add(b).Add(c).Multiply(d.Add(e).Add(f)), 2},
+		{(a.Add(b).Add(c)).Multiply(a.Add(e).Add(f)), 2},
+		{a.Add(a).Add(c).Multiply(d.Add(e).Add(f)), 1},
+		{(a.Add(a).Add(a)).Multiply(d.Add(e).Add(f)), 0},
+		{(a.Multiply(b)).Add(b.Multiply(c)).Add(a.Multiply(d)).Add(a.Multiply(d).Multiply(e)), 1},
+	}
 
-	assertResilience(a, 0)
-	assertResilience(a.Add(b), 1)
-	assertResilience(a.Add(b).Add(c), 2)
-	assertResilience(a.Add(b).Add(c).Add(d), 3)
-	assertResilience(a, 0)
-	assertResilience(a.Multiply(b), 0)
-	assertResilience(a.Multiply(b).Multiply(c), 0)
-	assertResilience(a.Multiply(b).Multiply(c).Multiply(d), 0)
-	assertResilience(a.Add(b).Multiply(c.Add(d)), 1)
-	assertResilience(a.Add(b).Add(c).Multiply(d.Add(e).Add(f)), 2)
-	assertResilience((a.Add(b).Add(c)).Multiply(a.Add(e).Add(f)), 2)
-	assertResilience(a.Add(a).Add(c).Multiply(d.Add(e).Add(f)), 1)
-	assertResilience((a.Add(a).Add(a)).Multiply(d.Add(e).Add(f)), 0)
-	assertResilience((a.Multiply(b)).Add(b.Multiply(c)).Add(a.Multiply(d)).Add(a.Multiply(d).Multiply(e)), 1)
+	for _, tt := range tests {
+		assertResilience(tt.expr, tt.expected)
+	}
 
-	expr, _ := DefChoose(2, []GenericExpr{a, b, c})
-	assertResilience(expr, 1)
+	testsChoose := []struct {
+		k int
+		exprs []GenericExpr
+		expected uint
+	}{
+		{2, []GenericExpr{a, b, c}, 1},
+		{2, []GenericExpr{a, b, c, d, e}, 3},
+		{3, []GenericExpr{a, b, c, d, e}, 2},
+		{4, []GenericExpr{a, b, c, d, e}, 1},
+		{2, []GenericExpr{a.Add(b).Add(c), d.Add(e), f}, 2},
+		{2, []GenericExpr{a.Multiply(b), a.Multiply(c), d}, 0},
+		{2, []GenericExpr{a.Add(b), a.Add(c), a.Add(d)}, 2},
+	}
 
-	expr, _ = DefChoose(2, []GenericExpr{a, b, c, d, e})
-	assertResilience(expr, 3)
+	for _, tt := range testsChoose {
+		expr, _ := DefChoose(tt.k, tt.exprs)
+		assertResilience(expr, tt.expected)
+	}
 
-	expr, _ = DefChoose(3, []GenericExpr{a, b, c, d, e})
-	assertResilience(expr, 2)
 
-	expr, _ = DefChoose(4, []GenericExpr{a, b, c, d, e})
-	assertResilience(expr, 1)
-
-	expr, _ = DefChoose(2, []GenericExpr{a.Add(b).Add(c), d.Add(e), f})
-	assertResilience(expr, 2)
-
-	expr, _ = DefChoose(2, []GenericExpr{a.Multiply(b), a.Multiply(c), d})
-	assertResilience(expr, 0)
-
-	expr, _ = DefChoose(2, []GenericExpr{a.Add(b), a.Add(c), a.Add(d)})
-	assertResilience(expr, 2)
 }
 
 func TestDual(t *testing.T) {
