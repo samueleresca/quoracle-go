@@ -117,17 +117,28 @@ func TestIsQuorum(t *testing.T) {
 	}
 
 	chooseExp, _ := DefChoose(2, []GenericExpr{a, b, c})
-	assertIsQuorum(chooseExp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "c"}: true})
-	assertIsQuorum(chooseExp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "c"}: true, Node{Name: "x"}: true})
-	assertIsNotQuorum(chooseExp, ExprSet{})
-	assertIsNotQuorum(chooseExp, ExprSet{Node{Name: "a"}: true})
-	assertIsNotQuorum(chooseExp, ExprSet{Node{Name: "b"}: true})
-	assertIsNotQuorum(chooseExp, ExprSet{Node{Name: "c"}: true})
-	assertIsNotQuorum(chooseExp, ExprSet{Node{Name: "x"}: true})
 
-	assertIsQuorum(chooseExp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true})
-	assertIsQuorum(chooseExp, ExprSet{Node{Name: "a"}: true, Node{Name: "c"}: true})
-	assertIsQuorum(chooseExp, ExprSet{Node{Name: "b"}: true, Node{Name: "c"}: true})
+	tests = []struct {
+		expr GenericExpr
+		expected ExprSet
+		isQuorum bool
+	}{
+		{chooseExp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "c"}: true}, true},
+		{chooseExp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "c"}: true, Node{Name: "x"}: true}, true},
+		{chooseExp, ExprSet{}, false},
+		{chooseExp, ExprSet{Node{Name: "a"}: true}, false},
+		{chooseExp, ExprSet{Node{Name: "b"}: true}, false},
+		{chooseExp, ExprSet{Node{Name: "c"}: true}, false},
+		{chooseExp, ExprSet{Node{Name: "x"}: true}, false},
+		{chooseExp, ExprSet{Node{Name: "x"}: true}, false},
+		{chooseExp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true}, true},
+		{chooseExp, ExprSet{Node{Name: "a"}: true, Node{Name: "c"}: true}, true},
+		{chooseExp, ExprSet{Node{Name: "b"}: true, Node{Name: "c"}: true}, true},
+	}
+
+	for _, tt := range tests {
+		assert.Assert(t, tt.expr.IsQuorum(tt.expected) == tt.isQuorum)
+	}
 
 	exprAnd := a.Multiply(b).Multiply(c)
 	assertIsQuorum(exprAnd, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "c"}: true})
