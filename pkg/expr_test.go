@@ -92,18 +92,29 @@ func TestIsQuorum(t *testing.T) {
 	}
 
 	assertIsNotQuorum := func(expr GenericExpr, q ExprSet) {
-		assert.Assert(t, expr.IsQuorum(q) == false)
+
 	}
 
 	expr := a.Add(b).Add(c)
-	assertIsQuorum(expr, ExprSet{Node{Name: "a"}: true})
-	assertIsQuorum(expr, ExprSet{Node{Name: "b"}: true})
-	assertIsQuorum(expr, ExprSet{Node{Name: "c"}: true})
-	assertIsQuorum(expr, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true})
-	assertIsQuorum(expr, ExprSet{Node{Name: "a"}: true, Node{Name: "c"}: true})
-	assertIsQuorum(expr, ExprSet{Node{Name: "b"}: true, Node{Name: "c"}: true})
-	assertIsNotQuorum(expr, ExprSet{})
-	assertIsNotQuorum(expr, ExprSet{Node{Name: "x"}: true})
+
+	tests := []struct {
+		expr GenericExpr
+		expected ExprSet
+		isQuorum bool
+	}{
+		{expr, ExprSet{Node{Name: "a"}: true}, true},
+		{expr, ExprSet{Node{Name: "b"}: true}, true},
+		{expr, ExprSet{Node{Name: "c"}: true}, true},
+		{expr, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true}, true},
+		{expr, ExprSet{Node{Name: "a"}: true, Node{Name: "c"}: true}, true},
+		{expr, ExprSet{Node{Name: "b"}: true, Node{Name: "c"}: true}, true},
+		{expr, ExprSet{}, false},
+		{expr, ExprSet{Node{Name: "x"}: true}, false},
+	}
+
+	for _, tt := range tests {
+		assert.Assert(t, tt.expr.IsQuorum(tt.expected) == tt.isQuorum)
+	}
 
 	chooseExp, _ := DefChoose(2, []GenericExpr{a, b, c})
 	assertIsQuorum(chooseExp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "c"}: true})
@@ -252,38 +263,42 @@ func TestDual(t *testing.T) {
 }
 
 func TestDupFree(t *testing.T) {
-	assertDupFree := func(expr GenericExpr) {
-		assert.Assert(t, expr.DupFree() == true)
-	}
-
-	assertNonDupFree := func(expr GenericExpr) {
-		assert.Assert(t, expr.DupFree() == false)
-	}
-
 	a, b, c, d, e, f := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e"), DefNode("f")
 
-	assertDupFree(a)
-	assertDupFree(a.Add(b))
-	assertDupFree(a.Multiply(b))
-	assertDupFree(a.Multiply(b).Add(c))
-	assertDupFree((a.Add(b)).Multiply(c.Add(d.Multiply(e))))
-	assertNonDupFree(a.Add(a))
-	assertNonDupFree(a.Multiply(a))
-	assertNonDupFree(a.Multiply(b.Add(a)))
-	assertNonDupFree((a.Add(b)).Multiply(c.Add(d.Multiply(a))))
+	tests := []struct {
+		expr GenericExpr
+		isDupFree bool
+	}{
+		{a, true},
+		{a.Add(b), true},
+		{a.Multiply(b), true},
+		{a.Multiply(b).Add(c), true},
+		{(a.Add(b)).Multiply(c.Add(d.Multiply(e))), true},
+		{a.Add(a), false},
+		{a.Multiply(a), false},
+		{a.Multiply(b.Add(a)), false},
+		{(a.Add(b)).Multiply(c.Add(d.Multiply(a))), false},
+	}
 
-	expr, _ := DefChoose(2, []GenericExpr{a, b, c})
-	assertDupFree(expr)
 
-	expr, _ = DefChoose(2, []GenericExpr{a.Multiply(b), c, d.Add(e).Add(f)})
-	assertDupFree(expr)
+	for _, tt := range tests {
+		assert.Assert(t, tt.expr.DupFree() == tt.isDupFree)
+	}
 
-	expr, _ = DefChoose(3, []GenericExpr{a, b, c, d, e})
-	assertDupFree(expr)
+	testsChoose := []struct {
+		k int
+		exprs []GenericExpr
+		isDupFree bool
+	}{
+		{2, []GenericExpr{a, b, c}, true},
+		{2, []GenericExpr{a.Multiply(b), c, d.Add(e).Add(f)}, true},
+		{3, []GenericExpr{a, b, c, d, e}, true},
+		{2, []GenericExpr{a, b, a}, false},
+		{3, []GenericExpr{a, b, c, d, a}, false},
+	}
 
-	expr, _ = DefChoose(2, []GenericExpr{a, b, a})
-	assertNonDupFree(expr)
-
-	expr, _ = DefChoose(3, []GenericExpr{a, b, c, d, a})
-	assertNonDupFree(expr)
+	for _, tt := range testsChoose {
+		expr, _ := DefChoose(tt.k, tt.exprs)
+		assert.Assert(t, expr.DupFree() == tt.isDupFree)
+	}
 }
