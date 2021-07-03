@@ -201,8 +201,6 @@ func TestResilience(t *testing.T) {
 		expr, _ := DefChoose(tt.k, tt.exprs)
 		assertResilience(expr, tt.expected)
 	}
-
-
 }
 
 func TestDual(t *testing.T) {
@@ -213,40 +211,44 @@ func TestDual(t *testing.T) {
 
 	a, b, c, d, e := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e")
 
-	assertDual(a, a)
-	assertDual(a.Add(b), a.Multiply(b))
-	assertDual(a.Add(a), a.Multiply(a))
-	assertDual((a.Add(b)).Multiply(c.Add(d)), (a.Multiply(b)).Add(c.Multiply(d)))
-	assertDual((a.Add(b)).Multiply(a.Add(d)), (a.Multiply(b)).Add(a.Multiply(d)))
-	assertDual((a.Add(b)).Multiply(a.Add(a)), (a.Multiply(b)).Add(a.Multiply(a)))
-	assertDual((a.Add(a)).Multiply(a.Add(a)), (a.Multiply(a)).Add(a.Multiply(a)))
-	assertDual((a.Add(a.Multiply(b))).Add((c.Multiply(d)).Add(a)), (a.Multiply(a.Add(b))).Multiply((c.Add(d)).Multiply(a)))
+	tests := []struct {
+		expr1 GenericExpr
+		expr2 GenericExpr
+		isDual bool
+	}{
+		{a, a, true},
+		{a.Add(b), a.Multiply(b), true},
+		{a.Add(a), a.Multiply(a), true},
+		{(a.Add(b)).Multiply(c.Add(d)), (a.Multiply(b)).Add(c.Multiply(d)), true},
+		{(a.Add(b)).Multiply(a.Add(d)), (a.Multiply(b)).Add(a.Multiply(d)), true},
+		{(a.Add(b)).Multiply(a.Add(a)), (a.Multiply(b)).Add(a.Multiply(a)), true},
+		{(a.Add(a)).Multiply(a.Add(a)), (a.Multiply(a)).Add(a.Multiply(a)), true},
+		{(a.Add(a.Multiply(b))).Add((c.Multiply(d)).Add(a)), (a.Multiply(a.Add(b))).Multiply((c.Add(d)).Multiply(a)), true},
+	}
 
-	sut, _ := DefChoose(2, []GenericExpr{a, b, c})
-	expected, _ := DefChoose(2, []GenericExpr{a, b, c})
+	for _, tt := range tests {
+		assertDual(tt.expr1, tt.expr2)
+	}
 
-	assertDual(sut, expected)
+	testsChoose := []struct {
+		k1 int
+		k2 int
+		expr1 []GenericExpr
+		expr2 []GenericExpr
+	}{
+		{2, 2, []GenericExpr{a, b, c},  []GenericExpr{a, b, c}},
+		{2, 2, []GenericExpr{a.Add(b), c.Add(d), e}, []GenericExpr{a.Multiply(b), c.Multiply(d), e} },
+		{3, 3, []GenericExpr{a, b, c, d, e}, []GenericExpr{a, b, c, d, e}},
+		{2,4, []GenericExpr{a, b, c, d, e}, []GenericExpr{a, b, c, d, e} },
+		{4,2, []GenericExpr{a, b, c, d, e}, []GenericExpr{a, b, c, d, e} },
+	}
 
-	sut, _ = DefChoose(2, []GenericExpr{a.Add(b), c.Add(d), e})
-	expected, _ = DefChoose(2, []GenericExpr{a.Multiply(b), c.Multiply(d), e})
+	for _, tt := range testsChoose {
+		expr1, _ := DefChoose(tt.k1, tt.expr1)
+		expr2, _ := DefChoose(tt.k2, tt.expr2)
 
-	assertDual(sut, expected)
-
-	sut, _ = DefChoose(3, []GenericExpr{a, b, c, d, e})
-	expected, _ = DefChoose(3, []GenericExpr{a, b, c, d, e})
-
-	assertDual(sut, expected)
-
-	sut, _ = DefChoose(2, []GenericExpr{a, b, c, d, e})
-	expected, _ = DefChoose(4, []GenericExpr{a, b, c, d, e})
-
-	assertDual(sut, expected)
-
-	sut, _ = DefChoose(4, []GenericExpr{a, b, c, d, e})
-	expected, _ = DefChoose(2, []GenericExpr{a, b, c, d, e})
-
-	assertDual(sut, expected)
-
+		assertDual(expr1, expr2)
+	}
 }
 
 func TestDupFree(t *testing.T) {
