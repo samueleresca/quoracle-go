@@ -41,7 +41,7 @@ type Node struct {
 	Latency       *uint
 }
 
-func DefNode(name string) Node {
+func NewNode(name string) Node {
 	node := Node{}
 	node.Name = name
 
@@ -52,7 +52,7 @@ func DefNode(name string) Node {
 	return node
 }
 
-func DefNodeWithCapacityAndLatency(name string, readCapacity uint, writeCapacity uint, latency uint) Node {
+func NewNodeWithCapacityAndLatency(name string, readCapacity uint, writeCapacity uint, latency uint) Node {
 	node := Node{}
 
 	node.Name = name
@@ -63,7 +63,7 @@ func DefNodeWithCapacityAndLatency(name string, readCapacity uint, writeCapacity
 	return node
 }
 
-func DefNodeWithCapacity(name string, readCapacity uint, writeCapacity uint) Node {
+func NewNodeWithCapacity(name string, readCapacity uint, writeCapacity uint) Node {
 	node := Node{}
 
 	node.Name = name
@@ -73,7 +73,7 @@ func DefNodeWithCapacity(name string, readCapacity uint, writeCapacity uint) Nod
 	return node
 }
 
-func DefNodeWithLatency(name string, latency uint) Node {
+func NewNodeWithLatency(name string, latency uint) Node {
 	node := Node{}
 
 	node.Name = name
@@ -426,15 +426,8 @@ type Choose struct {
 	K  int
 }
 
-func NewChoose(k int, es []GenericExpr) (Choose, error) {
-	if k <= 0 || k > len(es) {
-		return Choose{}, fmt.Errorf("k must be in the range [1, %d]", len(es))
-	}
 
-	return Choose{Es: es, K: k}, nil
-}
-
-func DefChoose(k int, es []GenericExpr) (GenericExpr, error) {
+func NewChoose(k int, es []GenericExpr) (GenericExpr, error) {
 	if len(es) == 0 {
 		return Choose{}, fmt.Errorf("no expressions provided")
 	}
@@ -451,7 +444,11 @@ func DefChoose(k int, es []GenericExpr) (GenericExpr, error) {
 		return And{Es: es}, nil
 	}
 
-	return NewChoose(k, es)
+	if k <= 0 || k > len(es) {
+		return Choose{}, fmt.Errorf("k must be in the range [1, %d]", len(es))
+	}
+
+	return Choose{Es: es, K: k}, nil
 }
 
 func (e Choose) Add(rhs GenericExpr) Or {
@@ -761,8 +758,10 @@ func minHittingSet(quorums []ExprSet) uint {
 	}
 
 	result := uint(0)
+
 	for _, v := range soln {
 		result += uint(math.Round(v))
 	}
+
 	return result
 }

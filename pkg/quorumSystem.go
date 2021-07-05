@@ -49,7 +49,7 @@ type lpDefinition struct {
 	Objectives  [][]float64
 }
 
-func DefQuorumSystem(reads GenericExpr, writes GenericExpr) (QuorumSystem, error) {
+func NewQuorumSystem(reads GenericExpr, writes GenericExpr) (QuorumSystem, error) {
 	optionalWrites := reads.Dual()
 
 	for k := range writes.Quorums() {
@@ -68,8 +68,8 @@ func DefQuorumSystem(reads GenericExpr, writes GenericExpr) (QuorumSystem, error
 	return qs, nil
 }
 
-func DefQuorumSystemWithReads(reads GenericExpr) QuorumSystem {
-	qs, _ := DefQuorumSystem(reads, reads.Dual())
+func NewQuorumSystemWithReads(reads GenericExpr) QuorumSystem {
+	qs, _ := NewQuorumSystem(reads, reads.Dual())
 
 	qs.XtoNode = map[string]Node{}
 
@@ -80,7 +80,7 @@ func DefQuorumSystemWithReads(reads GenericExpr) QuorumSystem {
 	return qs
 }
 
-func DefQuorumSystemWithWrites(writes GenericExpr) QuorumSystem {
+func NewQuorumSystemWithWrites(writes GenericExpr) QuorumSystem {
 	qs := QuorumSystem{Reads: writes.Dual(), Writes: writes}
 
 	qs.XtoNode = map[string]Node{}
@@ -327,7 +327,7 @@ func (qs QuorumSystem) UniformStrategy(f int) (Strategy, error) {
 		sigmaW = append(sigmaW, SigmaRecord{q, 1 / float64(len(writeQuorums))})
 	}
 
-	return DefStrategy(qs, Sigma{sigmaR}, Sigma{sigmaW}), nil
+	return NewStrategy(qs, Sigma{sigmaR}, Sigma{sigmaW}), nil
 }
 
 func (qs QuorumSystem) MakeStrategy(sigmaR Sigma, sigmaW Sigma) (Strategy, error) {
@@ -381,7 +381,7 @@ func (qs QuorumSystem) MakeStrategy(sigmaR Sigma, sigmaW Sigma) (Strategy, error
 			SigmaRecord{Quorum: value.Quorum, Probability: value.Probability / totalSigmaW})
 	}
 
-	return DefStrategy(qs, Sigma{Values: normalizedSigmaR}, Sigma{Values: normalizedSigmaW}), nil
+	return NewStrategy(qs, Sigma{Values: normalizedSigmaR}, Sigma{Values: normalizedSigmaW}), nil
 }
 
 func (qs QuorumSystem) minimize(sets []ExprSet) []ExprSet {
@@ -778,7 +778,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		}
 	}
 
-	newStrategy := DefStrategy(qs, Sigma{Values: readSigma}, Sigma{Values: writeSigma})
+	newStrategy := NewStrategy(qs, Sigma{Values: readSigma}, Sigma{Values: writeSigma})
 
 	return &newStrategy, nil
 }
@@ -925,7 +925,7 @@ type Sigma struct {
 	Values []SigmaRecord
 }
 
-func DefStrategy(quorumSystem QuorumSystem, sigmaR Sigma, sigmaW Sigma) Strategy {
+func NewStrategy(quorumSystem QuorumSystem, sigmaR Sigma, sigmaW Sigma) Strategy {
 	newStrategy := Strategy{SigmaR: sigmaR, SigmaW: sigmaW, Qs: quorumSystem}
 
 	xReadProbability := make(map[Node]float64)

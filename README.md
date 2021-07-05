@@ -24,13 +24,13 @@ import "fmt"
 
 func main() {
 	a, b, c, d :=
-		DefNodeWithCapacityAndLatency("a", 2, 1, 1),
-		DefNodeWithCapacityAndLatency("b", 2, 1, 2),
-		DefNodeWithCapacityAndLatency("c", 2, 1, 3),
-		DefNodeWithCapacityAndLatency("d", 2, 1, 4)
+		NewNodeWithCapacityAndLatency("a", 2, 1, 1),
+		NewNodeWithCapacityAndLatency("b", 2, 1, 2),
+		NewNodeWithCapacityAndLatency("c", 2, 1, 3),
+		NewNodeWithCapacityAndLatency("d", 2, 1, 4)
 
 	// Read quorum (a*b) + (c*d) 
-	qs := DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
+	qs := NewNodeWithCapacityAndLatency((a.Multiply(b)).Add(c.Multiply(d)))
 
 	// Load optimized strategy with read_fraction 100%
 	strategyOptions := StrategyOptions{

@@ -10,7 +10,7 @@ import (
 )
 
 func TestNode(t *testing.T) {
-	a, b, c := DefNode("a"), DefNode("b"), DefNode("c")
+	a, b, c := NewNode("a"), NewNode("b"), NewNode("c")
 	assert.Assert(t, a.String() == "a")
 	assert.Assert(t, b.String() == "b")
 	assert.Assert(t, c.String() == "c")
@@ -43,7 +43,7 @@ func TestQuorums(t *testing.T) {
 		assert.Assert(t, reflect.DeepEqual(actual, expected) == true, fmt.Sprintf("assertQuorums - Actual: %v | Expected  %v", actual, expected))
 	}
 
-	a, b, c, d, e, f := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e"), DefNode("f")
+	a, b, c, d, e, f := NewNode("a"), NewNode("b"), NewNode("c"), NewNode("d"), NewNode("e"), NewNode("f")
 	assert.Assert(t, a.Add(b).Add(c).String() == "(a + b + c)")
 	assert.Assert(t, a.Multiply(b).Multiply(c).String() == "(a * b * c)")
 	assert.Assert(t, a.Add(b.Multiply(c)).String() == "(a + (b * c))")
@@ -66,20 +66,20 @@ func TestQuorums(t *testing.T) {
 		assertQuorums(tt.expr, tt.expected)
 	}
 
-	expr, _ := DefChoose(1, []GenericExpr{a, b, c})
+	expr, _ := NewChoose(1, []GenericExpr{a, b, c})
 	assertQuorums(expr, [][]string{{"a"}, {"b"}, {"c"}})
 
-	expr, _ = DefChoose(2, []GenericExpr{a, b, c})
+	expr, _ = NewChoose(2, []GenericExpr{a, b, c})
 	assertQuorums(expr, [][]string{{"a", "c"}, {"a", "b"}, {"b", "c"}})
 
-	expr, _ = DefChoose(3, []GenericExpr{a, b, c})
+	expr, _ = NewChoose(3, []GenericExpr{a, b, c})
 	assertQuorums(expr, [][]string{{"a", "b", "c"}})
 
-	expr1, _ := DefChoose(2, []GenericExpr{a, b, c})
-	expr2, _ := DefChoose(2, []GenericExpr{d, e, f})
-	expr3, _ := DefChoose(2, []GenericExpr{a, c, e})
+	expr1, _ := NewChoose(2, []GenericExpr{a, b, c})
+	expr2, _ := NewChoose(2, []GenericExpr{d, e, f})
+	expr3, _ := NewChoose(2, []GenericExpr{a, c, e})
 
-	expr, _ = DefChoose(2, []GenericExpr{expr1, expr2, expr3})
+	expr, _ = NewChoose(2, []GenericExpr{expr1, expr2, expr3})
 
 	assertQuorums(expr, [][]string{{"a", "b", "d", "e"}, {"a", "b", "d", "f"}, {"a", "b", "e", "f"},
 		{"a", "c", "d", "e"}, {"a", "c", "d", "f"}, {"a", "c", "e", "f"},
@@ -94,7 +94,7 @@ func TestQuorums(t *testing.T) {
 
 func TestIsQuorum(t *testing.T) {
 
-	a, b, c, d := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d")
+	a, b, c, d := NewNode("a"), NewNode("b"), NewNode("c"), NewNode("d")
 
 	expr := a.Add(b).Add(c)
 
@@ -117,7 +117,7 @@ func TestIsQuorum(t *testing.T) {
 		assert.Assert(t, tt.expr.IsQuorum(tt.expected) == tt.isQuorum)
 	}
 
-	chooseExp, _ := DefChoose(2, []GenericExpr{a, b, c})
+	chooseExp, _ := NewChoose(2, []GenericExpr{a, b, c})
 
 	tests = []struct {
 		expr     GenericExpr
@@ -199,7 +199,7 @@ func TestIsQuorum(t *testing.T) {
 
 func TestResilience(t *testing.T) {
 
-	a, b, c, d, e, f := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e"), DefNode("f")
+	a, b, c, d, e, f := NewNode("a"), NewNode("b"), NewNode("c"), NewNode("d"), NewNode("e"), NewNode("f")
 
 	assertResilience := func(expr GenericExpr, n uint) {
 		actual := expr.Resilience()
@@ -244,7 +244,7 @@ func TestResilience(t *testing.T) {
 	}
 
 	for _, tt := range testsChoose {
-		expr, _ := DefChoose(tt.k, tt.exprs)
+		expr, _ := NewChoose(tt.k, tt.exprs)
 		assertResilience(expr, tt.expected)
 	}
 }
@@ -255,7 +255,7 @@ func TestDual(t *testing.T) {
 		assert.DeepEqual(t, x.Dual(), y)
 	}
 
-	a, b, c, d, e := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e")
+	a, b, c, d, e := NewNode("a"), NewNode("b"), NewNode("c"), NewNode("d"), NewNode("e")
 
 	tests := []struct {
 		expr1  GenericExpr
@@ -290,15 +290,15 @@ func TestDual(t *testing.T) {
 	}
 
 	for _, tt := range testsChoose {
-		expr1, _ := DefChoose(tt.k1, tt.expr1)
-		expr2, _ := DefChoose(tt.k2, tt.expr2)
+		expr1, _ := NewChoose(tt.k1, tt.expr1)
+		expr2, _ := NewChoose(tt.k2, tt.expr2)
 
 		assertDual(expr1, expr2)
 	}
 }
 
 func TestDupFree(t *testing.T) {
-	a, b, c, d, e, f := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e"), DefNode("f")
+	a, b, c, d, e, f := NewNode("a"), NewNode("b"), NewNode("c"), NewNode("d"), NewNode("e"), NewNode("f")
 
 	tests := []struct {
 		expr      GenericExpr
@@ -332,7 +332,7 @@ func TestDupFree(t *testing.T) {
 	}
 
 	for _, tt := range testsChoose {
-		expr, _ := DefChoose(tt.k, tt.exprs)
+		expr, _ := NewChoose(tt.k, tt.exprs)
 		assert.Assert(t, expr.DupFree() == tt.isDupFree)
 	}
 }
