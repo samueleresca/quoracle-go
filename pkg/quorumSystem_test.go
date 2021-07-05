@@ -128,8 +128,8 @@ func TestUniformStrategy(t *testing.T) {
 
 	sigma, _ = DefQuorumSystemWithReads(a.Add(a.Multiply(b)).Add(a.Multiply(c))).UniformStrategy(0)
 
-	//assertSigma(sigma.SigmaR.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
-	//assertSigma(sigma.SigmaW.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
+	assertSigma(sigma.SigmaR.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
+	assertSigma(sigma.SigmaW.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
 
 	sigma, _ = DefQuorumSystemWithReads(a.Add(b)).UniformStrategy(0)
 
