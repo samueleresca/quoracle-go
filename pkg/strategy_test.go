@@ -8,10 +8,10 @@ import (
 )
 
 func TestGetQuorum(t *testing.T) {
-	a, b, c, d, e := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e")
+	a, b, c, d, e := NewNode("a"), NewNode("b"), NewNode("c"), NewNode("d"), NewNode("e")
 
-	choose1, _ := DefChoose(2, []GenericExpr{a, b, c})
-	choose2, _ := DefChoose(2, []GenericExpr{a, b, c, d, e})
+	choose1, _ := NewChoose(2, []GenericExpr{a, b, c})
+	choose2, _ := NewChoose(2, []GenericExpr{a, b, c, d, e})
 
 	exprs := []GenericExpr{a,
 		a.Add(b),
@@ -23,7 +23,7 @@ func TestGetQuorum(t *testing.T) {
 	}
 
 	for _, expr := range exprs {
-		qs := DefQuorumSystemWithReads(expr)
+		qs := NewQuorumSystemWithReads(expr)
 		sigma, _ := qs.UniformStrategy(0)
 
 		for i := 0; i < 10; i++ {
@@ -35,9 +35,9 @@ func TestGetQuorum(t *testing.T) {
 }
 
 func TestNetworkLoad(t *testing.T) {
-	a, b, c, d, e := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d"), DefNode("e")
+	a, b, c, d, e := NewNode("a"), NewNode("b"), NewNode("c"), NewNode("d"), NewNode("e")
 
-	qs := DefQuorumSystemWithReads(a.Multiply(b).Add(c.Multiply(d).Multiply(e)))
+	qs := NewQuorumSystemWithReads(a.Multiply(b).Add(c.Multiply(d).Multiply(e)))
 	sigma, _ := qs.MakeStrategy(
 		Sigma{Values: []SigmaRecord{
 			{ExprSet{a: true, b: true}, 75},
@@ -63,9 +63,9 @@ func TestNetworkLoad(t *testing.T) {
 func TestLatency(t *testing.T) {
 	const float64EqualityThreshold = 1e-9
 
-	a, b, c, d, e := DefNodeWithLatency("a", 1), DefNodeWithLatency("b", 2), DefNodeWithLatency("c", 3), DefNodeWithLatency("d", 4), DefNodeWithLatency("e", 5)
+	a, b, c, d, e := NewNodeWithLatency("a", 1), NewNodeWithLatency("b", 2), NewNodeWithLatency("c", 3), NewNodeWithLatency("d", 4), NewNodeWithLatency("e", 5)
 
-	qs := DefQuorumSystemWithReads(a.Multiply(b).Add(c.Multiply(d).Multiply(e)))
+	qs := NewQuorumSystemWithReads(a.Multiply(b).Add(c.Multiply(d).Multiply(e)))
 	sigma, _ := qs.MakeStrategy(
 		Sigma{Values: []SigmaRecord{
 			{ExprSet{a: true, b: true}, 10},
@@ -100,10 +100,10 @@ func TestLatency(t *testing.T) {
 }
 
 func TestLoadCapUtil(t *testing.T) {
-	a, b, c, d := DefNodeWithCapacity("a", 50, 10), DefNodeWithCapacity("b", 60, 20), DefNodeWithCapacity("c", 70, 30), DefNodeWithCapacity("d", 80, 40)
+	a, b, c, d := NewNodeWithCapacity("a", 50, 10), NewNodeWithCapacity("b", 60, 20), NewNodeWithCapacity("c", 70, 30), NewNodeWithCapacity("d", 80, 40)
 	const float64EqualityThreshold = 1e-9
 
-	qs := DefQuorumSystemWithReads(a.Multiply(b).Add(c.Multiply(d)))
+	qs := NewQuorumSystemWithReads(a.Multiply(b).Add(c.Multiply(d)))
 
 	sigma, _ := qs.MakeStrategy(
 		Sigma{Values: []SigmaRecord{

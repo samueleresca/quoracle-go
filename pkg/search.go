@@ -94,7 +94,7 @@ func dupFreeExprs(nodes []GenericExpr, maxHeight int) chan GenericExpr {
 
 		go func() {
 			for k := 1; k < len(nodes)+1; k++ {
-				choose, _ := DefChoose(k, nodes)
+				choose, _ := NewChoose(k, nodes)
 				chnl <- choose
 			}
 			close(chnl)
@@ -129,7 +129,7 @@ func dupFreeExprs(nodes []GenericExpr, maxHeight int) chan GenericExpr {
 				}
 
 				for k := 1; k < len(subexprs)+1; k++ {
-					result, _ := DefChoose(k, exprs)
+					result, _ := NewChoose(k, exprs)
 					chnl <- result
 				}
 			}
@@ -175,7 +175,7 @@ func performQuorumSearch(nodes []GenericExpr, opts ...func(options *SearchOption
 	doSearch := func(exprs chan GenericExpr) error {
 
 		for r := range exprs {
-			qs := DefQuorumSystemWithReads(r)
+			qs := NewQuorumSystemWithReads(r)
 
 			if qs.Resilience() < sb.Resilience {
 				continue

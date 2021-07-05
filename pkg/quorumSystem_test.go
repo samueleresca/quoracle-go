@@ -37,21 +37,21 @@ func TestInit(t *testing.T) {
 
 		assert.Assert(t, reflect.DeepEqual(actual, expected) == true, fmt.Sprintf("assertQuorums - Actual: %v | Expected  %v", actual, expected))
 	}
-	a, b, c := DefNode("a"), DefNode("b"), DefNode("c")
+	a, b, c := NewNode("a"), NewNode("b"), NewNode("c")
 
-	qs := DefQuorumSystemWithReads(a.Add(b))
+	qs := NewQuorumSystemWithReads(a.Add(b))
 	assertQuorums(qs.Reads, [][]string{{"a"}, {"b"}})
 	assertQuorums(qs.Writes, [][]string{{"a", "b"}})
 
-	qs = DefQuorumSystemWithWrites(a.Add(b))
+	qs = NewQuorumSystemWithWrites(a.Add(b))
 	assertQuorums(qs.Writes, [][]string{{"a"}, {"b"}})
 	assertQuorums(qs.Reads, [][]string{{"a", "b"}})
 
-	qs, _ = DefQuorumSystem(a.Add(b), a.Multiply(b).Multiply(c))
+	qs, _ = NewQuorumSystem(a.Add(b), a.Multiply(b).Multiply(c))
 	assertQuorums(qs.Reads, [][]string{{"a"}, {"b"}})
 	assertQuorums(qs.Writes, [][]string{{"a", "b", "c"}})
 
-	_, err := DefQuorumSystem(a.Add(b), a)
+	_, err := NewQuorumSystem(a.Add(b), a)
 
 	assert.Error(t, err, "not all read quorums intersect all write quorums")
 
@@ -104,34 +104,34 @@ func TestUniformStrategy(t *testing.T) {
 		assert.Assert(t, reflect.DeepEqual(actualString, expectedString), "", fmt.Sprintf("assertSigma - Actual: %v | Expected  %v", actualString, expectedString))
 	}
 
-	a, b, c, d := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d")
+	a, b, c, d := NewNode("a"), NewNode("b"), NewNode("c"), NewNode("d")
 
-	sigma, _ := DefQuorumSystemWithReads(a).UniformStrategy(0)
-
-	assertSigma(sigma.SigmaR.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
-	assertSigma(sigma.SigmaW.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
-
-	sigma, _ = DefQuorumSystemWithReads(a.Add(a)).UniformStrategy(0)
+	sigma, _ := NewQuorumSystemWithReads(a).UniformStrategy(0)
 
 	assertSigma(sigma.SigmaR.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
 	assertSigma(sigma.SigmaW.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
 
-	sigma, _ = DefQuorumSystemWithReads(a.Multiply(a)).UniformStrategy(0)
+	sigma, _ = NewQuorumSystemWithReads(a.Add(a)).UniformStrategy(0)
 
 	assertSigma(sigma.SigmaR.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
 	assertSigma(sigma.SigmaW.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
 
-	sigma, _ = DefQuorumSystemWithReads(a.Add(a.Multiply(b))).UniformStrategy(0)
+	sigma, _ = NewQuorumSystemWithReads(a.Multiply(a)).UniformStrategy(0)
 
 	assertSigma(sigma.SigmaR.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
 	assertSigma(sigma.SigmaW.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
 
-	sigma, _ = DefQuorumSystemWithReads(a.Add(a.Multiply(b)).Add(a.Multiply(c))).UniformStrategy(0)
+	sigma, _ = NewQuorumSystemWithReads(a.Add(a.Multiply(b))).UniformStrategy(0)
 
-	//assertSigma(sigma.SigmaR.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
-	//assertSigma(sigma.SigmaW.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
+	assertSigma(sigma.SigmaR.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
+	assertSigma(sigma.SigmaW.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
 
-	sigma, _ = DefQuorumSystemWithReads(a.Add(b)).UniformStrategy(0)
+	sigma, _ = NewQuorumSystemWithReads(a.Add(a.Multiply(b)).Add(a.Multiply(c))).UniformStrategy(0)
+
+	assertSigma(sigma.SigmaR.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
+	assertSigma(sigma.SigmaW.Values, []SigmaRecord{{ExprSet{a: true}, 1.0}})
+
+	sigma, _ = NewQuorumSystemWithReads(a.Add(b)).UniformStrategy(0)
 
 	assertSigma(sigma.SigmaR.Values, []SigmaRecord{
 		{ExprSet{a: true}, 0.5},
@@ -141,7 +141,7 @@ func TestUniformStrategy(t *testing.T) {
 		{ExprSet{a: true, b: true}, 1.0},
 	})
 
-	sigma, _ = DefQuorumSystemWithReads(a.Add(b).Add(c)).UniformStrategy(0)
+	sigma, _ = NewQuorumSystemWithReads(a.Add(b).Add(c)).UniformStrategy(0)
 
 	assertSigma(sigma.SigmaR.Values, []SigmaRecord{
 		{ExprSet{a: true}, 1.0 / 3},
@@ -152,7 +152,7 @@ func TestUniformStrategy(t *testing.T) {
 		{ExprSet{a: true, b: true, c: true}, 1.0},
 	})
 
-	sigma, _ = DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d))).UniformStrategy(0)
+	sigma, _ = NewQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d))).UniformStrategy(0)
 
 	assertSigma(sigma.SigmaR.Values, []SigmaRecord{
 		{ExprSet{a: true, b: true}, 1.0 / 2},
@@ -165,7 +165,7 @@ func TestUniformStrategy(t *testing.T) {
 		{ExprSet{b: true, d: true}, 1.0 / 4},
 	})
 
-	sigma, _ = DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)).Add(a.Multiply(b)).Add(a.Multiply(b).Multiply(c))).UniformStrategy(0)
+	sigma, _ = NewQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)).Add(a.Multiply(b)).Add(a.Multiply(b).Multiply(c))).UniformStrategy(0)
 
 	assertSigma(sigma.SigmaR.Values, []SigmaRecord{
 		{ExprSet{a: true, b: true}, 1.0 / 2},
@@ -225,10 +225,10 @@ func TestMakeStrategy(t *testing.T) {
 		assert.Assert(t, reflect.DeepEqual(actualString, expectedString), "", fmt.Sprintf("assertSigma - Actual: %v | Expected  %v", actualString, expectedString))
 	}
 
-	a, b, c, d := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d")
+	a, b, c, d := NewNode("a"), NewNode("b"), NewNode("c"), NewNode("d")
 
 	sigma, _ :=
-		DefQuorumSystemWithReads(a.Multiply(b).Add(c.Multiply(d))).MakeStrategy(
+		NewQuorumSystemWithReads(a.Multiply(b).Add(c.Multiply(d))).MakeStrategy(
 			Sigma{Values: []SigmaRecord{
 				{ExprSet{a: true, b: true}, 25},
 				{ExprSet{c: true, d: true}, 75}}},
@@ -249,7 +249,7 @@ func TestMakeStrategy(t *testing.T) {
 		{ExprSet{b: true, d: true}, 0.25}})
 
 	_, err :=
-		DefQuorumSystemWithReads(a.Multiply(b).Add(c.Multiply(d))).MakeStrategy(
+		NewQuorumSystemWithReads(a.Multiply(b).Add(c.Multiply(d))).MakeStrategy(
 			Sigma{Values: []SigmaRecord{
 				{ExprSet{a: true, b: true}, -1},
 				{ExprSet{c: true, d: true}, 1}}},
@@ -262,7 +262,7 @@ func TestMakeStrategy(t *testing.T) {
 	assert.Assert(t, err != nil)
 
 	_, err =
-		DefQuorumSystemWithReads(a.Multiply(b).Add(c.Multiply(d))).MakeStrategy(
+		NewQuorumSystemWithReads(a.Multiply(b).Add(c.Multiply(d))).MakeStrategy(
 			Sigma{Values: []SigmaRecord{
 				{ExprSet{a: true}, 1},
 				{ExprSet{c: true, d: true}, 1}}},
@@ -280,10 +280,10 @@ func TestOptimalStrategyLoad(t *testing.T) {
 	const float64EqualityThreshold = 1e-9
 
 	a, b, c, d :=
-		DefNodeWithCapacityAndLatency("a", 2, 1, 1), DefNodeWithCapacityAndLatency("b", 2, 1, 2),
-		DefNodeWithCapacityAndLatency("c", 2, 1, 3), DefNodeWithCapacityAndLatency("d", 2, 1, 4)
+		NewNodeWithCapacityAndLatency("a", 2, 1, 1), NewNodeWithCapacityAndLatency("b", 2, 1, 2),
+		NewNodeWithCapacityAndLatency("c", 2, 1, 3), NewNodeWithCapacityAndLatency("d", 2, 1, 4)
 
-	qs := DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
+	qs := NewQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
 
 	// Load optimized
 	strategyOptions := StrategyOptions{
@@ -410,10 +410,10 @@ func TestOptimalStrategyNetwork(t *testing.T) {
 	const float64EqualityThreshold = 1e-9
 
 	a, b, c, d :=
-		DefNodeWithCapacityAndLatency("a", 2, 1, 1), DefNodeWithCapacityAndLatency("b", 2, 1, 2),
-		DefNodeWithCapacityAndLatency("c", 2, 1, 3), DefNodeWithCapacityAndLatency("d", 2, 1, 4)
+		NewNodeWithCapacityAndLatency("a", 2, 1, 1), NewNodeWithCapacityAndLatency("b", 2, 1, 2),
+		NewNodeWithCapacityAndLatency("c", 2, 1, 3), NewNodeWithCapacityAndLatency("d", 2, 1, 4)
 
-	qs := DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
+	qs := NewQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
 
 	// Network optimized
 	strategyOptions := StrategyOptions{
@@ -498,10 +498,10 @@ func TestOptimalStrategyLatency(t *testing.T) {
 	const float64EqualityThreshold = 1e-9
 
 	a, b, c, d :=
-		DefNodeWithCapacityAndLatency("a", 2, 1, 1), DefNodeWithCapacityAndLatency("b", 2, 1, 2),
-		DefNodeWithCapacityAndLatency("c", 2, 1, 3), DefNodeWithCapacityAndLatency("d", 2, 1, 4)
+		NewNodeWithCapacityAndLatency("a", 2, 1, 1), NewNodeWithCapacityAndLatency("b", 2, 1, 2),
+		NewNodeWithCapacityAndLatency("c", 2, 1, 3), NewNodeWithCapacityAndLatency("d", 2, 1, 4)
 
-	qs := DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
+	qs := NewQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
 
 	// Latency optimized
 	strategyOptions := StrategyOptions{
@@ -591,10 +591,10 @@ func TestOptimalStrategyLatency(t *testing.T) {
 
 func TestOptimalStrategyIllegalSpecs(t *testing.T) {
 	a, b, c, d :=
-		DefNodeWithCapacityAndLatency("a", 2, 1, 1), DefNodeWithCapacityAndLatency("b", 2, 1, 2),
-		DefNodeWithCapacityAndLatency("c", 2, 1, 3), DefNodeWithCapacityAndLatency("d", 2, 1, 4)
+		NewNodeWithCapacityAndLatency("a", 2, 1, 1), NewNodeWithCapacityAndLatency("b", 2, 1, 2),
+		NewNodeWithCapacityAndLatency("c", 2, 1, 3), NewNodeWithCapacityAndLatency("d", 2, 1, 4)
 
-	qs := DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
+	qs := NewQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
 
 	loadLimit := 1.0
 	strategyOptions := StrategyOptions{
@@ -636,10 +636,10 @@ func TestOptimalStrategyIllegalSpecs(t *testing.T) {
 
 func TestOptimalStrategyUnsatisfiableConstraints(t *testing.T) {
 	a, b, c, d :=
-		DefNodeWithCapacityAndLatency("a", 2, 1, 1), DefNodeWithCapacityAndLatency("b", 2, 1, 2),
-		DefNodeWithCapacityAndLatency("c", 2, 1, 3), DefNodeWithCapacityAndLatency("d", 2, 1, 4)
+		NewNodeWithCapacityAndLatency("a", 2, 1, 1), NewNodeWithCapacityAndLatency("b", 2, 1, 2),
+		NewNodeWithCapacityAndLatency("c", 2, 1, 3), NewNodeWithCapacityAndLatency("d", 2, 1, 4)
 
-	qs := DefQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
+	qs := NewQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
 
 	networkLimit := 1.5
 

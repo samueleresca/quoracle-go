@@ -11,7 +11,7 @@ import (
 
 func TestPartitions(t *testing.T) {
 
-	node1, node2, node3, node4 := DefNode("1"), DefNode("2"), DefNode("3"), DefNode("4")
+	node1, node2, node3, node4 := NewNode("1"), NewNode("2"), NewNode("3"), NewNode("4")
 
 	for r := range partitionings([]GenericExpr{}) {
 		assert.Assert(t, reflect.DeepEqual(r, [][]GenericExpr{}))
@@ -71,7 +71,7 @@ func TestPartitions(t *testing.T) {
 }
 
 func TestDupFreePartitions(t *testing.T) {
-	a, b, c, d := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d")
+	a, b, c, d := NewNode("a"), NewNode("b"), NewNode("c"), NewNode("d")
 
 	assertQuorums := func(e GenericExpr, xs [][]string) {
 		actual := make([]string, 0)
@@ -150,12 +150,12 @@ func TestDupFreePartitions(t *testing.T) {
 }
 
 func TestSearch(t *testing.T) {
-	a, b, c, e, d, f := DefNodeWithCapacityAndLatency("a", 1, 1, 2),
-		DefNodeWithCapacityAndLatency("b", 1, 1, 1),
-		DefNodeWithCapacityAndLatency("c", 1, 1, 2),
-		DefNodeWithCapacityAndLatency("d", 2, 2, 1),
-		DefNodeWithCapacityAndLatency("e", 1, 1, 2),
-		DefNodeWithCapacityAndLatency("f", 2, 2, 1)
+	a, b, c, e, d, f := NewNodeWithCapacityAndLatency("a", 1, 1, 2),
+		NewNodeWithCapacityAndLatency("b", 1, 1, 1),
+		NewNodeWithCapacityAndLatency("c", 1, 1, 2),
+		NewNodeWithCapacityAndLatency("d", 2, 2, 1),
+		NewNodeWithCapacityAndLatency("e", 1, 1, 2),
+		NewNodeWithCapacityAndLatency("f", 2, 2, 1)
 
 	for _, fr := range []float64{0, 0.5, 1} {
 		result, err := Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}})
