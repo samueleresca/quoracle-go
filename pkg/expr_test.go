@@ -87,14 +87,6 @@ func TestIsQuorum(t *testing.T) {
 
 	a, b, c, d := DefNode("a"), DefNode("b"), DefNode("c"), DefNode("d")
 
-	assertIsQuorum := func(expr GenericExpr, q ExprSet) {
-		assert.Assert(t, expr.IsQuorum(q) == true)
-	}
-
-	assertIsNotQuorum := func(expr GenericExpr, q ExprSet) {
-
-	}
-
 	expr := a.Add(b).Add(c)
 
 	tests := []struct {
@@ -141,36 +133,59 @@ func TestIsQuorum(t *testing.T) {
 	}
 
 	exprAnd := a.Multiply(b).Multiply(c)
-	assertIsQuorum(exprAnd, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "c"}: true})
-	assertIsQuorum(exprAnd, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "c"}: true, Node{Name: "x"}: true})
-	assertIsNotQuorum(exprAnd, ExprSet{})
-	assertIsNotQuorum(exprAnd, ExprSet{Node{Name: "a"}: true})
-	assertIsNotQuorum(exprAnd, ExprSet{Node{Name: "b"}: true})
-	assertIsNotQuorum(exprAnd, ExprSet{Node{Name: "c"}: true})
-	assertIsNotQuorum(exprAnd, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true})
-	assertIsNotQuorum(exprAnd, ExprSet{Node{Name: "a"}: true, Node{Name: "c"}: true})
-	assertIsNotQuorum(exprAnd, ExprSet{Node{Name: "b"}: true, Node{Name: "c"}: true})
-	assertIsNotQuorum(exprAnd, ExprSet{Node{Name: "x"}: true})
-	assertIsNotQuorum(exprAnd, ExprSet{Node{Name: "a"}: true, Node{Name: "x"}: true})
+
+	tests = []struct {
+		expr GenericExpr
+		expected ExprSet
+		isQuorum bool
+	}{
+		{exprAnd, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "c"}: true}, true},
+		{exprAnd, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "c"}: true, Node{Name: "x"}: true}, true},
+		{exprAnd, ExprSet{}, false},
+		{exprAnd, ExprSet{Node{Name: "a"}: true}, false},
+		{exprAnd, ExprSet{Node{Name: "b"}: true}, false},
+		{exprAnd, ExprSet{Node{Name: "c"}: true}, false},
+		{exprAnd, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true}, false},
+		{exprAnd, ExprSet{Node{Name: "a"}: true, Node{Name: "c"}: true}, false},
+		{exprAnd, ExprSet{Node{Name: "b"}: true, Node{Name: "c"}: true}, false},
+		{exprAnd, ExprSet{Node{Name: "x"}: true}, false},
+		{exprAnd, ExprSet{Node{Name: "a"}: true, Node{Name: "x"}: true}, false},
+	}
+
+	for _, tt := range tests {
+		assert.Assert(t, tt.expr.IsQuorum(tt.expected) == tt.isQuorum)
+	}
 
 	exprp := a.Add(b).Multiply(c.Add(d))
-	assertIsQuorum(exprp, ExprSet{Node{Name: "a"}: true, Node{Name: "c"}: true})
-	assertIsQuorum(exprp, ExprSet{Node{Name: "a"}: true, Node{Name: "c"}: true})
-	assertIsQuorum(exprp, ExprSet{Node{Name: "a"}: true, Node{Name: "d"}: true})
-	assertIsQuorum(exprp, ExprSet{Node{Name: "b"}: true, Node{Name: "d"}: true})
-	assertIsQuorum(exprp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "d"}: true})
-	assertIsQuorum(exprp, ExprSet{Node{Name: "b"}: true, Node{Name: "c"}: true, Node{Name: "d"}: true})
-	assertIsQuorum(exprp, ExprSet{Node{Name: "b"}: true, Node{Name: "c"}: true, Node{Name: "d"}: true})
-	assertIsQuorum(exprp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "d"}: true})
-	assertIsQuorum(exprp, ExprSet{Node{Name: "a"}: true, Node{Name: "c"}: true, Node{Name: "d"}: true})
-	assertIsQuorum(exprp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "c"}: true, Node{Name: "d"}: true})
-	assertIsNotQuorum(exprp, ExprSet{Node{Name: "a"}: true})
-	assertIsNotQuorum(exprp, ExprSet{Node{Name: "b"}: true})
-	assertIsNotQuorum(exprp, ExprSet{Node{Name: "c"}: true})
-	assertIsNotQuorum(exprp, ExprSet{Node{Name: "d"}: true})
-	assertIsNotQuorum(exprp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true})
-	assertIsNotQuorum(exprp, map[GenericExpr]bool{Node{Name: "c"}: true, Node{Name: "d"}: true})
-	assertIsNotQuorum(exprp, map[GenericExpr]bool{Node{Name: "x"}: true})
+
+	tests = []struct {
+		expr GenericExpr
+		expected ExprSet
+		isQuorum bool
+	}{
+		{exprp, ExprSet{Node{Name: "a"}: true, Node{Name: "c"}: true}, true},
+		{exprp, ExprSet{Node{Name: "a"}: true, Node{Name: "c"}: true}, true},
+		{exprp, ExprSet{Node{Name: "a"}: true, Node{Name: "d"}: true}, true},
+		{exprp, ExprSet{Node{Name: "b"}: true, Node{Name: "d"}: true}, true},
+		{exprp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "d"}: true}, true},
+		{exprp, ExprSet{Node{Name: "b"}: true, Node{Name: "c"}: true, Node{Name: "d"}: true}, true},
+		{exprp, ExprSet{Node{Name: "b"}: true, Node{Name: "c"}: true, Node{Name: "d"}: true}, true},
+		{exprp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "d"}: true}, true},
+		{exprp, ExprSet{Node{Name: "a"}: true, Node{Name: "c"}: true, Node{Name: "d"}: true}, true},
+		{exprp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true, Node{Name: "c"}: true, Node{Name: "d"}: true}, true},
+		{exprp, ExprSet{Node{Name: "a"}: true}, false},
+		{exprp, ExprSet{Node{Name: "b"}: true}, false},
+		{exprp, ExprSet{Node{Name: "a"}: true}, false},
+		{exprp, ExprSet{Node{Name: "c"}: true}, false},
+		{exprp, ExprSet{Node{Name: "d"}: true}, false},
+		{exprp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true}, false},
+		{exprp, map[GenericExpr]bool{Node{Name: "c"}: true, Node{Name: "d"}: true}, false},
+		{exprp, map[GenericExpr]bool{Node{Name: "x"}: true}, false},
+	}
+
+	for _, tt := range tests {
+		assert.Assert(t, tt.expr.IsQuorum(tt.expected) == tt.isQuorum)
+	}
 }
 
 func TestResilience(t *testing.T) {
