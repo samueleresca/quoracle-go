@@ -17,7 +17,7 @@ func TestNode(t *testing.T) {
 }
 
 func TestQuorums(t *testing.T) {
-	assertQuorums := func(e GenericExpr, xs [][]string) {
+	assertQuorums := func(e Quorum, xs [][]string) {
 		actual := make([]string, 0)
 
 		for q := range e.Quorums() {
@@ -99,7 +99,7 @@ func TestIsQuorum(t *testing.T) {
 	expr := a.Add(b).Add(c)
 
 	tests := []struct {
-		expr     GenericExpr
+		expr    Quorum
 		expected ExprSet
 		isQuorum bool
 	}{
@@ -120,7 +120,7 @@ func TestIsQuorum(t *testing.T) {
 	chooseExp, _ := NewChoose(2, []GenericExpr{a, b, c})
 
 	tests = []struct {
-		expr     GenericExpr
+		expr    Quorum
 		expected ExprSet
 		isQuorum bool
 	}{
@@ -144,7 +144,7 @@ func TestIsQuorum(t *testing.T) {
 	exprAnd := a.Multiply(b).Multiply(c)
 
 	tests = []struct {
-		expr     GenericExpr
+		expr    Quorum
 		expected ExprSet
 		isQuorum bool
 	}{
@@ -168,7 +168,7 @@ func TestIsQuorum(t *testing.T) {
 	exprp := a.Add(b).Multiply(c.Add(d))
 
 	tests = []struct {
-		expr     GenericExpr
+		expr    Quorum
 		expected ExprSet
 		isQuorum bool
 	}{
@@ -201,7 +201,7 @@ func TestResilience(t *testing.T) {
 
 	a, b, c, d, e, f := NewNode("a"), NewNode("b"), NewNode("c"), NewNode("d"), NewNode("e"), NewNode("f")
 
-	assertResilience := func(expr GenericExpr, n uint) {
+	assertResilience := func(expr ResilienceCalculator, n uint) {
 		actual := expr.Resilience()
 		assert.Assert(t, actual == n, fmt.Sprintf("Actual: %d | Expected  %d", actual, n))
 	}
@@ -251,7 +251,7 @@ func TestResilience(t *testing.T) {
 
 func TestDual(t *testing.T) {
 
-	assertDual := func(x GenericExpr, y GenericExpr) {
+	assertDual := func(x DualOperator, y GenericExpr) {
 		assert.DeepEqual(t, x.Dual(), y)
 	}
 
@@ -301,7 +301,7 @@ func TestDupFree(t *testing.T) {
 	a, b, c, d, e, f := NewNode("a"), NewNode("b"), NewNode("c"), NewNode("d"), NewNode("e"), NewNode("f")
 
 	tests := []struct {
-		expr      GenericExpr
+		expr      DuplicateChecker
 		isDupFree bool
 	}{
 		{a, true},
