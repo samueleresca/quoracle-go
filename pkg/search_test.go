@@ -73,7 +73,7 @@ func TestPartitions(t *testing.T) {
 func TestDupFreePartitions(t *testing.T) {
 	a, b, c, d := NewNode("a"), NewNode("b"), NewNode("c"), NewNode("d")
 
-	assertQuorums := func(e GenericExpr, xs [][]string) {
+	assertQuorums := func(e Quorum, xs [][]string) {
 		actual := make([]string, 0)
 
 		for q := range e.Quorums() {

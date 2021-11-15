@@ -17,20 +17,48 @@ type ExprOperator interface {
 	Add(expr GenericExpr) Or
 	Multiply(expr GenericExpr) And
 	Expr() string
+	Exprs() []GenericExpr
+}
+
+type DualOperator interface {
+	Dual() GenericExpr
+}
+
+type ResilienceCalculator interface {
+	Resilience() uint
+}
+
+type DuplicateChecker interface {
+	DupFree() bool
+}
+
+type NodeRetriever interface {
+	Nodes() NodeSet
+}
+
+type Quorum interface {
+	Quorums() chan ExprSet
+	IsQuorum(set ExprSet) bool
+}
+
+type MinFailuresChecker interface {
+	MinFailures() uint
+}
+
+type QuorumExpression interface {
+	NumLeaves() uint
 }
 
 type GenericExpr interface {
+	Quorum
 	ExprOperator
+	DualOperator
+	NodeRetriever
+	DuplicateChecker
+	MinFailuresChecker
+	ResilienceCalculator
+	QuorumExpression
 	fmt.Stringer
-	Quorums() chan ExprSet
-	IsQuorum(set ExprSet) bool
-	Nodes() NodeSet
-	NumLeaves() uint
-	DupFreeMinFailures() uint
-	Resilience() uint
-	DupFree() bool
-	GetEs() []GenericExpr
-	Dual() GenericExpr
 }
 
 // Node in a quorum
@@ -122,13 +150,13 @@ func (n Node) NumLeaves() uint {
 	return 1
 }
 
-func (n Node) DupFreeMinFailures() uint {
+func (n Node) MinFailures() uint {
 	return 1
 }
 
 func (n Node) Resilience() uint {
 	if n.DupFree() {
-		return n.DupFreeMinFailures() - 1
+		return n.MinFailures() - 1
 	}
 
 	qs := make([]ExprSet, 0)
@@ -152,7 +180,7 @@ func (n Node) Expr() string {
 	return "Node"
 }
 
-func (n Node) GetEs() []GenericExpr {
+func (n Node) Exprs() []GenericExpr {
 	return []GenericExpr{n}
 }
 
@@ -219,11 +247,11 @@ func (e Or) NumLeaves() uint {
 	return total
 }
 
-func (e Or) DupFreeMinFailures() uint {
+func (e Or) MinFailures() uint {
 	total := uint(0)
 
 	for _, es := range e.Es {
-		total += es.DupFreeMinFailures()
+		total += es.MinFailures()
 	}
 
 	return total
@@ -231,7 +259,7 @@ func (e Or) DupFreeMinFailures() uint {
 
 func (e Or) Resilience() uint {
 	if e.DupFree() {
-		return e.DupFreeMinFailures() - 1
+		return e.MinFailures() - 1
 	}
 
 	qs := make([]ExprSet, 0)
@@ -270,7 +298,7 @@ func (e Or) Expr() string {
 	return "Or"
 }
 
-func (e Or) GetEs() []GenericExpr {
+func (e Or) Exprs() []GenericExpr {
 	return e.Es
 }
 
@@ -355,13 +383,13 @@ func (e And) NumLeaves() uint {
 	return total
 }
 
-func (e And) DupFreeMinFailures() uint {
+func (e And) MinFailures() uint {
 	var exprs = e.Es
-	var min = exprs[0].DupFreeMinFailures()
+	var min = exprs[0].MinFailures()
 
 	for _, expr := range exprs {
-		if min > expr.DupFreeMinFailures() {
-			min = expr.DupFreeMinFailures()
+		if min > expr.MinFailures() {
+			min = expr.MinFailures()
 		}
 	}
 	return min
@@ -369,7 +397,7 @@ func (e And) DupFreeMinFailures() uint {
 
 func (e And) Resilience() uint {
 	if e.DupFree() {
-		return e.DupFreeMinFailures() - 1
+		return e.MinFailures() - 1
 	}
 
 	qs := make([]ExprSet, 0)
@@ -408,7 +436,7 @@ func (e And) Expr() string {
 	return "And"
 }
 
-func (e And) GetEs() []GenericExpr {
+func (e And) Exprs() []GenericExpr {
 	return e.Es
 }
 
@@ -425,7 +453,6 @@ type Choose struct {
 	Es []GenericExpr
 	K  int
 }
-
 
 func NewChoose(k int, es []GenericExpr) (GenericExpr, error) {
 	if len(es) == 0 {
@@ -524,13 +551,13 @@ func (e Choose) NumLeaves() uint {
 	return total
 }
 
-func (e Choose) DupFreeMinFailures() uint {
+func (e Choose) MinFailures() uint {
 	var exprs = e.Es
 
 	var subFailures []int
 
 	for _, expr := range exprs {
-		subFailures = append(subFailures, int(expr.DupFreeMinFailures()))
+		subFailures = append(subFailures, int(expr.MinFailures()))
 	}
 
 	sort.Ints(subFailures)
@@ -547,7 +574,7 @@ func (e Choose) DupFreeMinFailures() uint {
 
 func (e Choose) Resilience() uint {
 	if e.DupFree() {
-		return e.DupFreeMinFailures() - 1
+		return e.MinFailures() - 1
 	}
 
 	qs := make([]ExprSet, 0)
@@ -586,7 +613,7 @@ func (e Choose) Expr() string {
 	return "Choose"
 }
 
-func (e Choose) GetEs() []GenericExpr {
+func (e Choose) Exprs() []GenericExpr {
 	return e.Es
 }
 
@@ -602,11 +629,11 @@ func (e Choose) Dual() GenericExpr {
 
 func orExpr(lhs GenericExpr, rhs GenericExpr) Or {
 	if lhs.Expr() == "Or" && rhs.Expr() == "Or" {
-		return Or{append(lhs.GetEs(), rhs.GetEs()...)}
+		return Or{append(lhs.Exprs(), rhs.Exprs()...)}
 	} else if lhs.Expr() == "Or" {
-		return Or{append(lhs.GetEs(), rhs)}
+		return Or{append(lhs.Exprs(), rhs)}
 	} else if rhs.Expr() == "Or" {
-		return Or{append([]GenericExpr{lhs}, rhs.GetEs()...)}
+		return Or{append([]GenericExpr{lhs}, rhs.Exprs()...)}
 	} else {
 		return Or{[]GenericExpr{lhs, rhs}}
 	}
@@ -614,11 +641,11 @@ func orExpr(lhs GenericExpr, rhs GenericExpr) Or {
 
 func andExpr(lhs GenericExpr, rhs GenericExpr) And {
 	if lhs.Expr() == "And" && rhs.Expr() == "And" {
-		return And{append(lhs.GetEs(), rhs.GetEs()...)}
+		return And{append(lhs.Exprs(), rhs.Exprs()...)}
 	} else if lhs.Expr() == "And" {
-		return And{append(lhs.GetEs(), rhs)}
+		return And{append(lhs.Exprs(), rhs)}
 	} else if rhs.Expr() == "And" {
-		return And{append([]GenericExpr{lhs}, rhs.GetEs()...)}
+		return And{append([]GenericExpr{lhs}, rhs.Exprs()...)}
 	} else {
 		return And{[]GenericExpr{lhs, rhs}}
 	}

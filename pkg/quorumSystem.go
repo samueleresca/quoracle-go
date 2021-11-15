@@ -436,7 +436,7 @@ func (qs QuorumSystem) fResilientQuorums(f int, xs []Node, e GenericExpr) []Expr
 	return fResilientHelper(result, f, xs, e, s, 0)
 }
 
-func fResilientHelper(result []ExprSet, f int, xs []Node, e GenericExpr, s ExprSet, i int) []ExprSet {
+func fResilientHelper(result []ExprSet, f int, xs []Node, e Quorum, s ExprSet, i int) []ExprSet {
 	minf := f
 
 	if f > len(s) {

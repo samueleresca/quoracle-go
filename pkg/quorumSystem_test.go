@@ -12,7 +12,7 @@ import (
 
 func TestInit(t *testing.T) {
 
-	assertQuorums := func(e GenericExpr, xs [][]string) {
+	assertQuorums := func(e Quorum, xs [][]string) {
 		actual := make([]string, 0)
 
 		for q := range e.Quorums() {
