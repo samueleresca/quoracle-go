@@ -29,8 +29,8 @@ func main() {
 		NewNodeWithCapacityAndLatency("c", 2, 1, 3),
 		NewNodeWithCapacityAndLatency("d", 2, 1, 4)
 
-	// Read quorum (a*b) + (c*d) 
-	qs := NewNodeWithCapacityAndLatency((a.Multiply(b)).Add(c.Multiply(d)))
+	// Read quorum (a*b) + (c*d)
+	qs := NewQuorumSystemWithReads((a.Multiply(b)).Add(c.Multiply(d)))
 
 	// Load optimized strategy with read_fraction 100%
 	strategyOptions := StrategyOptions{
@@ -40,8 +40,8 @@ func main() {
 	}
 
 	load, _ := qs.Load(strategyOptions)
-	
-	fmt.PrintLn(load)
+
+	fmt.Println(*load)
 }
 ```
 

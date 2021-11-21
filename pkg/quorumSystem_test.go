@@ -40,16 +40,16 @@ func TestInit(t *testing.T) {
 	a, b, c := NewNode("a"), NewNode("b"), NewNode("c")
 
 	qs := NewQuorumSystemWithReads(a.Add(b))
-	assertQuorums(qs.Reads, [][]string{{"a"}, {"b"}})
-	assertQuorums(qs.Writes, [][]string{{"a", "b"}})
+	assertQuorums(qs.reads, [][]string{{"a"}, {"b"}})
+	assertQuorums(qs.writes, [][]string{{"a", "b"}})
 
 	qs = NewQuorumSystemWithWrites(a.Add(b))
-	assertQuorums(qs.Writes, [][]string{{"a"}, {"b"}})
-	assertQuorums(qs.Reads, [][]string{{"a", "b"}})
+	assertQuorums(qs.writes, [][]string{{"a"}, {"b"}})
+	assertQuorums(qs.reads, [][]string{{"a", "b"}})
 
 	qs, _ = NewQuorumSystem(a.Add(b), a.Multiply(b).Multiply(c))
-	assertQuorums(qs.Reads, [][]string{{"a"}, {"b"}})
-	assertQuorums(qs.Writes, [][]string{{"a", "b", "c"}})
+	assertQuorums(qs.reads, [][]string{{"a"}, {"b"}})
+	assertQuorums(qs.writes, [][]string{{"a", "b", "c"}})
 
 	_, err := NewQuorumSystem(a.Add(b), a)
 

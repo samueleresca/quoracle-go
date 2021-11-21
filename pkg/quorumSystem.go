@@ -19,9 +19,9 @@ const (
 )
 
 type QuorumSystem struct {
-	Reads   Expr
-	Writes  Expr
-	XtoNode map[string]Node
+	reads   Expr
+	writes     Expr
+	nameToNode map[string]Node
 }
 
 type StrategyOptions struct {
@@ -57,12 +57,12 @@ func NewQuorumSystem(reads Expr, writes Expr) (QuorumSystem, error) {
 			return QuorumSystem{}, fmt.Errorf("not all read quorums intersect all write quorums")
 		}
 	}
-	qs := QuorumSystem{Reads: reads, Writes: writes}
+	qs := QuorumSystem{reads: reads, writes: writes}
 
-	qs.XtoNode = map[string]Node{}
+	qs.nameToNode = map[string]Node{}
 
 	for node := range qs.GetNodes() {
-		qs.XtoNode[node.Name] = node
+		qs.nameToNode[node.Name] = node
 	}
 
 	return qs, nil
@@ -71,22 +71,22 @@ func NewQuorumSystem(reads Expr, writes Expr) (QuorumSystem, error) {
 func NewQuorumSystemWithReads(reads Expr) QuorumSystem {
 	qs, _ := NewQuorumSystem(reads, reads.Dual())
 
-	qs.XtoNode = map[string]Node{}
+	qs.nameToNode = map[string]Node{}
 
 	for node := range qs.GetNodes() {
-		qs.XtoNode[node.Name] = node
+		qs.nameToNode[node.Name] = node
 	}
 
 	return qs
 }
 
 func NewQuorumSystemWithWrites(writes Expr) QuorumSystem {
-	qs := QuorumSystem{Reads: writes.Dual(), Writes: writes}
+	qs := QuorumSystem{reads: writes.Dual(), writes: writes}
 
-	qs.XtoNode = map[string]Node{}
+	qs.nameToNode = map[string]Node{}
 
 	for node := range qs.GetNodes() {
-		qs.XtoNode[node.Name] = node
+		qs.nameToNode[node.Name] = node
 	}
 
 	return qs
@@ -155,11 +155,11 @@ func (qs QuorumSystem) NetworkLoad(strategyOptions StrategyOptions) (*float64, e
 	return strategy.NetworkLoad(&strategyOptions.ReadFraction, &strategyOptions.WriteFraction)
 }
 func (qs QuorumSystem) ReadQuorums() chan ExprSet {
-	return qs.Reads.Quorums()
+	return qs.reads.Quorums()
 }
 
 func (qs QuorumSystem) WriteQuorums() chan ExprSet {
-	return qs.Writes.Quorums()
+	return qs.writes.Quorums()
 }
 
 func (qs QuorumSystem) ListReadQuorums() []ExprSet {
@@ -183,25 +183,25 @@ func (qs QuorumSystem) ListWriteQuorums() []ExprSet {
 }
 
 func (qs QuorumSystem) IsReadQuorum(xs ExprSet) bool {
-	return qs.Reads.IsQuorum(xs)
+	return qs.reads.IsQuorum(xs)
 }
 
 func (qs QuorumSystem) IsWriteQuorum(xs ExprSet) bool {
-	return qs.Writes.IsQuorum(xs)
+	return qs.writes.IsQuorum(xs)
 }
 
 func (qs QuorumSystem) Node(x string) Node {
-	return qs.XtoNode[x]
+	return qs.nameToNode[x]
 }
 
 func (qs QuorumSystem) GetNodes() NodeSet {
 	r := make(NodeSet, 0)
 
-	for n := range qs.Reads.GetNodes() {
+	for n := range qs.reads.GetNodes() {
 		r[n] = true
 	}
 
-	for n := range qs.Writes.GetNodes() {
+	for n := range qs.writes.GetNodes() {
 		r[n] = true
 	}
 
@@ -228,15 +228,15 @@ func (qs QuorumSystem) Resilience() uint {
 }
 
 func (qs QuorumSystem) ReadResilience() uint {
-	return qs.Reads.Resilience()
+	return qs.reads.Resilience()
 }
 
 func (qs QuorumSystem) WriteResilience() uint {
-	return qs.Writes.Resilience()
+	return qs.writes.Resilience()
 }
 
 func (qs QuorumSystem) DupFree() bool {
-	return qs.Reads.DupFree() && qs.Writes.DupFree()
+	return qs.reads.DupFree() && qs.writes.DupFree()
 }
 
 func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*Strategy, error) {
@@ -286,11 +286,11 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 	rq = make([]ExprSet, 0)
 	wq = make([]ExprSet, 0)
 
-	for _, e := range qs.fResilientQuorums(sb.F, xs, qs.Reads) {
+	for _, e := range qs.fResilientQuorums(sb.F, xs, qs.reads) {
 		rq = append(rq, e)
 	}
 
-	for _, e := range qs.fResilientQuorums(sb.F, xs, qs.Writes) {
+	for _, e := range qs.fResilientQuorums(sb.F, xs, qs.writes) {
 		wq = append(wq, e)
 	}
 
