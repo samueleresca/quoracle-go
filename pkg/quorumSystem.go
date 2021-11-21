@@ -19,8 +19,8 @@ const (
 )
 
 type QuorumSystem struct {
-	Reads   GenericExpr
-	Writes  GenericExpr
+	Reads   Expr
+	Writes  Expr
 	XtoNode map[string]Node
 }
 
@@ -49,7 +49,7 @@ type lpDefinition struct {
 	Objectives  [][]float64
 }
 
-func NewQuorumSystem(reads GenericExpr, writes GenericExpr) (QuorumSystem, error) {
+func NewQuorumSystem(reads Expr, writes Expr) (QuorumSystem, error) {
 	optionalWrites := reads.Dual()
 
 	for k := range writes.Quorums() {
@@ -61,31 +61,31 @@ func NewQuorumSystem(reads GenericExpr, writes GenericExpr) (QuorumSystem, error
 
 	qs.XtoNode = map[string]Node{}
 
-	for node := range qs.Nodes() {
+	for node := range qs.GetNodes() {
 		qs.XtoNode[node.Name] = node
 	}
 
 	return qs, nil
 }
 
-func NewQuorumSystemWithReads(reads GenericExpr) QuorumSystem {
+func NewQuorumSystemWithReads(reads Expr) QuorumSystem {
 	qs, _ := NewQuorumSystem(reads, reads.Dual())
 
 	qs.XtoNode = map[string]Node{}
 
-	for node := range qs.Nodes() {
+	for node := range qs.GetNodes() {
 		qs.XtoNode[node.Name] = node
 	}
 
 	return qs
 }
 
-func NewQuorumSystemWithWrites(writes GenericExpr) QuorumSystem {
+func NewQuorumSystemWithWrites(writes Expr) QuorumSystem {
 	qs := QuorumSystem{Reads: writes.Dual(), Writes: writes}
 
 	qs.XtoNode = map[string]Node{}
 
-	for node := range qs.Nodes() {
+	for node := range qs.GetNodes() {
 		qs.XtoNode[node.Name] = node
 	}
 
@@ -194,14 +194,14 @@ func (qs QuorumSystem) Node(x string) Node {
 	return qs.XtoNode[x]
 }
 
-func (qs QuorumSystem) Nodes() NodeSet {
+func (qs QuorumSystem) GetNodes() NodeSet {
 	r := make(NodeSet, 0)
 
-	for n := range qs.Reads.Nodes() {
+	for n := range qs.Reads.GetNodes() {
 		r[n] = true
 	}
 
-	for n := range qs.Writes.Nodes() {
+	for n := range qs.Writes.GetNodes() {
 		r[n] = true
 	}
 
@@ -210,7 +210,7 @@ func (qs QuorumSystem) Nodes() NodeSet {
 
 func (qs QuorumSystem) Elements() []Node {
 	nodes := make([]Node, 0)
-	for n := range qs.Nodes() {
+	for n := range qs.GetNodes() {
 		nodes = append(nodes, n)
 	}
 	return nodes
@@ -391,7 +391,7 @@ func (qs QuorumSystem) minimize(sets []ExprSet) []ExprSet {
 	})
 
 	isSuperSet := func(x ExprSet, e ExprSet) bool {
-		set := make(map[GenericExpr]int)
+		set := make(map[Expr]int)
 		for k := range x {
 			set[k] += 1
 		}
@@ -430,7 +430,7 @@ func (qs QuorumSystem) minimize(sets []ExprSet) []ExprSet {
 	return minimalElements
 }
 
-func (qs QuorumSystem) fResilientQuorums(f int, xs []Node, e GenericExpr) []ExprSet {
+func (qs QuorumSystem) fResilientQuorums(f int, xs []Node, e Expr) []ExprSet {
 	s := ExprSet{}
 	result := make([]ExprSet, 0)
 	return fResilientHelper(result, f, xs, e, s, 0)
@@ -444,7 +444,7 @@ func fResilientHelper(result []ExprSet, f int, xs []Node, e Quorum, s ExprSet, i
 	}
 
 	isAll := true
-	combinationSets := combinations(exprMapToList(s), minf)
+	combinationSets := combinations(exprSetToArr(s), minf)
 
 	for _, failure := range combinationSets {
 		if !e.IsQuorum(removeFromExprSet(s, failure)) {
@@ -465,7 +465,7 @@ func fResilientHelper(result []ExprSet, f int, xs []Node, e Quorum, s ExprSet, i
 	return result
 }
 
-func removeFromExprSet(set ExprSet, g []GenericExpr) ExprSet {
+func removeFromExprSet(set ExprSet, g []Expr) ExprSet {
 	newSet := copyExprSet(set)
 
 	for _, e := range g {
@@ -687,7 +687,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 
 		// Load formula
 
-		for n := range qs.Nodes() {
+		for n := range qs.GetNodes() {
 			tmp := make([]float64, len(def.Vars))
 
 			if _, ok := xToReadQuorumVars[n]; ok {
@@ -793,9 +793,9 @@ func appendObj(obj [][]float64, lobj [][]float64) [][]float64 {
 	return obj
 }
 
-func defineOptimizationVars(readQuorums []ExprSet, writeQuorums []ExprSet) (readQuorumVars []lpVariable, xToReadQuorumVars map[GenericExpr][]lpVariable, writeQuorumVars []lpVariable, xToWriteQuorumVars map[GenericExpr][]lpVariable) {
+func defineOptimizationVars(readQuorums []ExprSet, writeQuorums []ExprSet) (readQuorumVars []lpVariable, xToReadQuorumVars map[Expr][]lpVariable, writeQuorumVars []lpVariable, xToWriteQuorumVars map[Expr][]lpVariable) {
 	readQuorumVars = make([]lpVariable, 0)
-	xToReadQuorumVars = make(map[GenericExpr][]lpVariable)
+	xToReadQuorumVars = make(map[Expr][]lpVariable)
 
 	for i, rq := range readQuorums {
 		q := rq
@@ -813,7 +813,7 @@ func defineOptimizationVars(readQuorums []ExprSet, writeQuorums []ExprSet) (read
 	}
 
 	writeQuorumVars = make([]lpVariable, 0)
-	xToWriteQuorumVars = make(map[GenericExpr][]lpVariable)
+	xToWriteQuorumVars = make(map[Expr][]lpVariable)
 
 	for i, rq := range writeQuorums {
 		q := rq
@@ -1145,7 +1145,7 @@ func (s Strategy) NodeThroughput(node Node, rf *Distribution, wf *Distribution) 
 func (s Strategy) maxLoad(fr float64) float64 {
 	max := 0.0
 
-	for n := range s.Qs.Nodes() {
+	for n := range s.Qs.GetNodes() {
 		if s.nodeLoad(n, fr) > max {
 			max = s.nodeLoad(n, fr)
 		}

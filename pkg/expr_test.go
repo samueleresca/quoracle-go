@@ -49,12 +49,12 @@ func TestQuorums(t *testing.T) {
 	assert.Assert(t, a.Add(b.Multiply(c)).String() == "(a + (b * c))")
 
 	tests := []struct {
-		expr     GenericExpr
+		expr     Expr
 		expected [][]string
 	}{
 		{(a.Multiply(b)).Multiply(c), [][]string{{"a", "b", "c"}}},
 		{a.Add(b).Add(c), [][]string{{"a"}, {"b"}, {"c"}}},
-		{And{Es: []GenericExpr{And{Es: []GenericExpr{a, b}}, c}}, [][]string{{"a", "b", "c"}}},
+		{And{Es: []Expr{And{Es: []Expr{a, b}}, c}}, [][]string{{"a", "b", "c"}}},
 		{a.Add(b.Multiply(c)), [][]string{{"a"}, {"b", "c"}}},
 		{a.Multiply(a).Multiply(a), [][]string{{"a"}}},
 		{a.Multiply(a.Add(b)), [][]string{{"a"}, {"a", "b"}}},
@@ -66,20 +66,20 @@ func TestQuorums(t *testing.T) {
 		assertQuorums(tt.expr, tt.expected)
 	}
 
-	expr, _ := NewChoose(1, []GenericExpr{a, b, c})
+	expr, _ := NewChoose(1, []Expr{a, b, c})
 	assertQuorums(expr, [][]string{{"a"}, {"b"}, {"c"}})
 
-	expr, _ = NewChoose(2, []GenericExpr{a, b, c})
+	expr, _ = NewChoose(2, []Expr{a, b, c})
 	assertQuorums(expr, [][]string{{"a", "c"}, {"a", "b"}, {"b", "c"}})
 
-	expr, _ = NewChoose(3, []GenericExpr{a, b, c})
+	expr, _ = NewChoose(3, []Expr{a, b, c})
 	assertQuorums(expr, [][]string{{"a", "b", "c"}})
 
-	expr1, _ := NewChoose(2, []GenericExpr{a, b, c})
-	expr2, _ := NewChoose(2, []GenericExpr{d, e, f})
-	expr3, _ := NewChoose(2, []GenericExpr{a, c, e})
+	expr1, _ := NewChoose(2, []Expr{a, b, c})
+	expr2, _ := NewChoose(2, []Expr{d, e, f})
+	expr3, _ := NewChoose(2, []Expr{a, c, e})
 
-	expr, _ = NewChoose(2, []GenericExpr{expr1, expr2, expr3})
+	expr, _ = NewChoose(2, []Expr{expr1, expr2, expr3})
 
 	assertQuorums(expr, [][]string{{"a", "b", "d", "e"}, {"a", "b", "d", "f"}, {"a", "b", "e", "f"},
 		{"a", "c", "d", "e"}, {"a", "c", "d", "f"}, {"a", "c", "e", "f"},
@@ -117,7 +117,7 @@ func TestIsQuorum(t *testing.T) {
 		assert.Assert(t, tt.expr.IsQuorum(tt.expected) == tt.isQuorum)
 	}
 
-	chooseExp, _ := NewChoose(2, []GenericExpr{a, b, c})
+	chooseExp, _ := NewChoose(2, []Expr{a, b, c})
 
 	tests = []struct {
 		expr    Quorum
@@ -188,8 +188,8 @@ func TestIsQuorum(t *testing.T) {
 		{exprp, ExprSet{Node{Name: "c"}: true}, false},
 		{exprp, ExprSet{Node{Name: "d"}: true}, false},
 		{exprp, ExprSet{Node{Name: "a"}: true, Node{Name: "b"}: true}, false},
-		{exprp, map[GenericExpr]bool{Node{Name: "c"}: true, Node{Name: "d"}: true}, false},
-		{exprp, map[GenericExpr]bool{Node{Name: "x"}: true}, false},
+		{exprp, map[Expr]bool{Node{Name: "c"}: true, Node{Name: "d"}: true}, false},
+		{exprp, map[Expr]bool{Node{Name: "x"}: true}, false},
 	}
 
 	for _, tt := range tests {
@@ -207,7 +207,7 @@ func TestResilience(t *testing.T) {
 	}
 
 	tests := []struct {
-		expr     GenericExpr
+		expr     Expr
 		expected uint
 	}{
 		{a, 0},
@@ -231,16 +231,16 @@ func TestResilience(t *testing.T) {
 
 	testsChoose := []struct {
 		k        int
-		exprs    []GenericExpr
+		exprs    []Expr
 		expected uint
 	}{
-		{2, []GenericExpr{a, b, c}, 1},
-		{2, []GenericExpr{a, b, c, d, e}, 3},
-		{3, []GenericExpr{a, b, c, d, e}, 2},
-		{4, []GenericExpr{a, b, c, d, e}, 1},
-		{2, []GenericExpr{a.Add(b).Add(c), d.Add(e), f}, 2},
-		{2, []GenericExpr{a.Multiply(b), a.Multiply(c), d}, 0},
-		{2, []GenericExpr{a.Add(b), a.Add(c), a.Add(d)}, 2},
+		{2, []Expr{a, b, c}, 1},
+		{2, []Expr{a, b, c, d, e}, 3},
+		{3, []Expr{a, b, c, d, e}, 2},
+		{4, []Expr{a, b, c, d, e}, 1},
+		{2, []Expr{a.Add(b).Add(c), d.Add(e), f}, 2},
+		{2, []Expr{a.Multiply(b), a.Multiply(c), d}, 0},
+		{2, []Expr{a.Add(b), a.Add(c), a.Add(d)}, 2},
 	}
 
 	for _, tt := range testsChoose {
@@ -251,15 +251,15 @@ func TestResilience(t *testing.T) {
 
 func TestDual(t *testing.T) {
 
-	assertDual := func(x DualOperator, y GenericExpr) {
+	assertDual := func(x DualOperator, y Expr) {
 		assert.DeepEqual(t, x.Dual(), y)
 	}
 
 	a, b, c, d, e := NewNode("a"), NewNode("b"), NewNode("c"), NewNode("d"), NewNode("e")
 
 	tests := []struct {
-		expr1  GenericExpr
-		expr2  GenericExpr
+		expr1  Expr
+		expr2  Expr
 		isDual bool
 	}{
 		{a, a, true},
@@ -279,14 +279,14 @@ func TestDual(t *testing.T) {
 	testsChoose := []struct {
 		k1    int
 		k2    int
-		expr1 []GenericExpr
-		expr2 []GenericExpr
+		expr1 []Expr
+		expr2 []Expr
 	}{
-		{2, 2, []GenericExpr{a, b, c}, []GenericExpr{a, b, c}},
-		{2, 2, []GenericExpr{a.Add(b), c.Add(d), e}, []GenericExpr{a.Multiply(b), c.Multiply(d), e}},
-		{3, 3, []GenericExpr{a, b, c, d, e}, []GenericExpr{a, b, c, d, e}},
-		{2, 4, []GenericExpr{a, b, c, d, e}, []GenericExpr{a, b, c, d, e}},
-		{4, 2, []GenericExpr{a, b, c, d, e}, []GenericExpr{a, b, c, d, e}},
+		{2, 2, []Expr{a, b, c}, []Expr{a, b, c}},
+		{2, 2, []Expr{a.Add(b), c.Add(d), e}, []Expr{a.Multiply(b), c.Multiply(d), e}},
+		{3, 3, []Expr{a, b, c, d, e}, []Expr{a, b, c, d, e}},
+		{2, 4, []Expr{a, b, c, d, e}, []Expr{a, b, c, d, e}},
+		{4, 2, []Expr{a, b, c, d, e}, []Expr{a, b, c, d, e}},
 	}
 
 	for _, tt := range testsChoose {
@@ -321,14 +321,14 @@ func TestDupFree(t *testing.T) {
 
 	testsChoose := []struct {
 		k         int
-		exprs     []GenericExpr
+		exprs     []Expr
 		isDupFree bool
 	}{
-		{2, []GenericExpr{a, b, c}, true},
-		{2, []GenericExpr{a.Multiply(b), c, d.Add(e).Add(f)}, true},
-		{3, []GenericExpr{a, b, c, d, e}, true},
-		{2, []GenericExpr{a, b, a}, false},
-		{3, []GenericExpr{a, b, c, d, a}, false},
+		{2, []Expr{a, b, c}, true},
+		{2, []Expr{a.Multiply(b), c, d.Add(e).Add(f)}, true},
+		{3, []Expr{a, b, c, d, e}, true},
+		{2, []Expr{a, b, a}, false},
+		{3, []Expr{a, b, c, d, a}, false},
 	}
 
 	for _, tt := range testsChoose {

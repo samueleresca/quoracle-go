@@ -39,15 +39,15 @@ func initSearchOptions(initOptions SearchOptions) func(options *SearchOptions) e
 	return init
 }
 
-func partitionings(xs []GenericExpr) chan [][]GenericExpr {
+func partitionings(xs []Expr) chan [][]Expr {
 	return partitioningsHelper(xs)
 }
 
-func partitioningsHelper(xs []GenericExpr) chan [][]GenericExpr {
-	chnl := make(chan [][]GenericExpr)
+func partitioningsHelper(xs []Expr) chan [][]Expr {
+	chnl := make(chan [][]Expr)
 	if len(xs) == 0 {
 		go func() {
-			chnl <- [][]GenericExpr{}
+			chnl <- [][]Expr{}
 			close(chnl)
 		}()
 		return chnl
@@ -59,14 +59,14 @@ func partitioningsHelper(xs []GenericExpr) chan [][]GenericExpr {
 	go func() {
 		for partition := range partitioningsHelper(rest) {
 			newPartition := partition
-			newPartition = append([][]GenericExpr{{x}}, newPartition...)
+			newPartition = append([][]Expr{{x}}, newPartition...)
 
 			chnl <- newPartition
 
 			for i := 0; i < len(partition); i++ {
-				result := make([][]GenericExpr, 0)
+				result := make([][]Expr, 0)
 				result = append(result, partition[:i]...)
-				result = append(result, append([]GenericExpr{x}, partition[i]...))
+				result = append(result, append([]Expr{x}, partition[i]...))
 
 				chnl <- append(result, partition[i+1:]...)
 
@@ -77,8 +77,8 @@ func partitioningsHelper(xs []GenericExpr) chan [][]GenericExpr {
 	return chnl
 }
 
-func dupFreeExprs(nodes []GenericExpr, maxHeight int) chan GenericExpr {
-	chnl := make(chan GenericExpr, 0)
+func dupFreeExprs(nodes []Expr, maxHeight int) chan Expr {
+	chnl := make(chan Expr, 0)
 
 	if len(nodes) == 1 {
 
@@ -120,12 +120,12 @@ func dupFreeExprs(nodes []GenericExpr, maxHeight int) chan GenericExpr {
 				subiterators = append(subiterators, tmp)
 			}
 
-			for _, subexprs := range productInterfaces(subiterators...) {
+			for _, subexprs := range product(subiterators...) {
 
-				exprs := make([]GenericExpr, 0)
+				exprs := make([]Expr, 0)
 
 				for _, se := range subexprs {
-					exprs = append(exprs, se.(GenericExpr))
+					exprs = append(exprs, se.(Expr))
 				}
 
 				for k := 1; k < len(subexprs)+1; k++ {
@@ -141,11 +141,11 @@ func dupFreeExprs(nodes []GenericExpr, maxHeight int) chan GenericExpr {
 	return chnl
 }
 
-func Search(nodes []GenericExpr, option SearchOptions) (SearchResult, error) {
+func Search(nodes []Expr, option SearchOptions) (SearchResult, error) {
 	return performQuorumSearch(nodes, initSearchOptions(option))
 }
 
-func performQuorumSearch(nodes []GenericExpr, opts ...func(options *SearchOptions) error) (SearchResult, error) {
+func performQuorumSearch(nodes []Expr, opts ...func(options *SearchOptions) error) (SearchResult, error) {
 
 	sb := &SearchOptions{}
 	// ... (write initializations with default values)...
@@ -172,7 +172,7 @@ func performQuorumSearch(nodes []GenericExpr, opts ...func(options *SearchOption
 	var optSigma *Strategy = nil
 	var optMetric *float64 = nil
 
-	doSearch := func(exprs chan GenericExpr) error {
+	doSearch := func(exprs chan Expr) error {
 
 		for r := range exprs {
 			qs := NewQuorumSystemWithReads(r)

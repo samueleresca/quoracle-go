@@ -10,10 +10,10 @@ import (
 func TestGetQuorum(t *testing.T) {
 	a, b, c, d, e := NewNode("a"), NewNode("b"), NewNode("c"), NewNode("d"), NewNode("e")
 
-	choose1, _ := NewChoose(2, []GenericExpr{a, b, c})
-	choose2, _ := NewChoose(2, []GenericExpr{a, b, c, d, e})
+	choose1, _ := NewChoose(2, []Expr{a, b, c})
+	choose2, _ := NewChoose(2, []Expr{a, b, c, d, e})
 
-	exprs := []GenericExpr{a,
+	exprs := []Expr{a,
 		a.Add(b),
 		a.Add(b).Add(c),
 		choose1,
