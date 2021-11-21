@@ -13,21 +13,21 @@ func TestPartitions(t *testing.T) {
 
 	node1, node2, node3, node4 := NewNode("1"), NewNode("2"), NewNode("3"), NewNode("4")
 
-	for r := range partitionings([]GenericExpr{}) {
-		assert.Assert(t, reflect.DeepEqual(r, [][]GenericExpr{}))
+	for r := range partitionings([]Expr{}) {
+		assert.Assert(t, reflect.DeepEqual(r, [][]Expr{}))
 	}
 
-	for r := range partitionings([]GenericExpr{node1}) {
-		assert.Assert(t, reflect.DeepEqual(r, [][]GenericExpr{{node1}}))
+	for r := range partitionings([]Expr{node1}) {
+		assert.Assert(t, reflect.DeepEqual(r, [][]Expr{{node1}}))
 	}
 
-	result := partitionings([]GenericExpr{node1, node2})
+	result := partitionings([]Expr{node1, node2})
 
 	result1 := <-result
 	result2 := <-result
 
-	assert.Assert(t, reflect.DeepEqual(result1, [][]GenericExpr{{node1}, {node2}}) == true)
-	assert.Assert(t, reflect.DeepEqual(result2, [][]GenericExpr{{node1, node2}}) == true)
+	assert.Assert(t, reflect.DeepEqual(result1, [][]Expr{{node1}, {node2}}) == true)
+	assert.Assert(t, reflect.DeepEqual(result2, [][]Expr{{node1, node2}}) == true)
 
 	expected := map[string]bool{
 		"[[1] [2] [3]]": true,
@@ -38,7 +38,7 @@ func TestPartitions(t *testing.T) {
 	}
 
 	index := 0
-	for actual := range partitionings([]GenericExpr{node1, node2, node3}) {
+	for actual := range partitionings([]Expr{node1, node2, node3}) {
 		_, ok := expected[fmt.Sprint(actual)]
 		assert.Assert(t, ok == true, actual)
 		index++
@@ -63,7 +63,7 @@ func TestPartitions(t *testing.T) {
 	}
 
 	index = 0
-	for actual := range partitionings([]GenericExpr{node1, node2, node3, node4}) {
+	for actual := range partitionings([]Expr{node1, node2, node3, node4}) {
 		_, ok := expected[fmt.Sprint(actual)]
 		assert.Assert(t, ok == true, actual)
 		index++
@@ -105,7 +105,7 @@ func TestDupFreePartitions(t *testing.T) {
 
 	index := 0
 
-	for e := range dupFreeExprs([]GenericExpr{a}, 0) {
+	for e := range dupFreeExprs([]Expr{a}, 0) {
 		assertQuorums(e, expected[index])
 		index++
 	}
@@ -116,7 +116,7 @@ func TestDupFreePartitions(t *testing.T) {
 
 	index = 0
 
-	for e := range dupFreeExprs([]GenericExpr{a, b}, 0) {
+	for e := range dupFreeExprs([]Expr{a, b}, 0) {
 		assertQuorums(e, expected[index])
 		index++
 	}
@@ -129,7 +129,7 @@ func TestDupFreePartitions(t *testing.T) {
 
 	index = 0
 
-	for e := range dupFreeExprs([]GenericExpr{a, b, c}, 1) {
+	for e := range dupFreeExprs([]Expr{a, b, c}, 1) {
 		assertQuorums(e, expected[index])
 		index++
 	}
@@ -143,7 +143,7 @@ func TestDupFreePartitions(t *testing.T) {
 
 	index = 0
 
-	for e := range dupFreeExprs([]GenericExpr{a, b, c, d}, 1) {
+	for e := range dupFreeExprs([]Expr{a, b, c, d}, 1) {
 		assertQuorums(e, expected[index])
 		index++
 	}
@@ -158,27 +158,27 @@ func TestSearch(t *testing.T) {
 		NewNodeWithCapacityAndLatency("f", 2, 2, 1)
 
 	for _, fr := range []float64{0, 0.5, 1} {
-		result, err := Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}})
+		result, err := Search([]Expr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}})
 		assert.Assert(t, err == nil)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
-		result, err = Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Network, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}})
+		result, err = Search([]Expr{a, b, c}, SearchOptions{Optimize: Network, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}})
 		assert.Assert(t, err == nil)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
-		result, err = Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Latency, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}})
+		result, err = Search([]Expr{a, b, c}, SearchOptions{Optimize: Latency, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}})
 		assert.Assert(t, err == nil, err)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
-		result, err = Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, F: 0, Resilience: 1.0})
+		result, err = Search([]Expr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, F: 0, Resilience: 1.0})
 		assert.Assert(t, err == nil, err)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
-		result, err = Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, F: 1.0, Resilience: 0.0})
+		result, err = Search([]Expr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, F: 1.0, Resilience: 0.0})
 		assert.Assert(t, err == nil, err)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
@@ -187,34 +187,34 @@ func TestSearch(t *testing.T) {
 	networkLimit := 3.0
 	latencyLimit := 2.0
 
-	result, err := Search([]GenericExpr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{0.25: 1.0}}, NetworkLimit: &networkLimit, LatencyLimit: &latencyLimit})
+	result, err := Search([]Expr{a, b, c}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{0.25: 1.0}}, NetworkLimit: &networkLimit, LatencyLimit: &latencyLimit})
 	assert.Assert(t, err == nil)
 	assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 	assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
 	timeoutSecs := 0.25
 	for _, fr := range []float64{0, 0.5} {
-		result, err := Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, TimeoutSecs: timeoutSecs})
+		result, err := Search([]Expr{a, b, c, d, e, f}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, TimeoutSecs: timeoutSecs})
 		assert.Assert(t, err == nil)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
-		result, err = Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Network, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, TimeoutSecs: timeoutSecs})
+		result, err = Search([]Expr{a, b, c, d, e, f}, SearchOptions{Optimize: Network, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, TimeoutSecs: timeoutSecs})
 		assert.Assert(t, err == nil)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
-		result, err = Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Latency, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, TimeoutSecs: timeoutSecs})
+		result, err = Search([]Expr{a, b, c, d, e, f}, SearchOptions{Optimize: Latency, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, TimeoutSecs: timeoutSecs})
 		assert.Assert(t, err == nil, err)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
-		result, err = Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, F: 0, Resilience: 1.0, TimeoutSecs: timeoutSecs})
+		result, err = Search([]Expr{a, b, c, d, e, f}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, F: 0, Resilience: 1.0, TimeoutSecs: timeoutSecs})
 		assert.Assert(t, err == nil, err)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)
 
-		result, err = Search([]GenericExpr{a, b, c, d, e, f}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, F: 1.0, Resilience: 0.0, TimeoutSecs: timeoutSecs})
+		result, err = Search([]Expr{a, b, c, d, e, f}, SearchOptions{Optimize: Load, ReadFraction: QuorumDistribution{DistributionValues{fr: 1.0}}, F: 1.0, Resilience: 0.0, TimeoutSecs: timeoutSecs})
 		assert.Assert(t, err == nil, err)
 		assert.Assert(t, len(result.Strategy.SigmaR.Values) > 0)
 		assert.Assert(t, len(result.Strategy.SigmaW.Values) > 0)

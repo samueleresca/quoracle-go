@@ -2,66 +2,93 @@ package pkg
 
 import (
 	"fmt"
+	"github.com/lanl/clp"
 	"math"
 	"math/bits"
 	"sort"
 	"strings"
-
-	"github.com/lanl/clp"
 )
 
-type ExprSet = map[GenericExpr]bool
+// ExprSet describes a set of Expr.
+type ExprSet = map[Expr]bool
+// NodeSet describes a set of Node.
 type NodeSet = map[Node]bool
 
-type ExprOperator interface {
-	Add(expr GenericExpr) Or
-	Multiply(expr GenericExpr) And
-	Expr() string
-	Exprs() []GenericExpr
+// NodesOperator that wraps the Add and Multiply methods needed to build a quorum from a set of Node.
+type NodesOperator interface {
+	// Add method aggregate a Node to an Expr with a logical Or (a ∨ b)
+	// returns the resulting Or operation.
+	Add(expr Expr) Or
+	// Multiply method aggregate a Node to an Expr with a logical And (a ∧ b)
+	// returns the resulting And operation.
+	Multiply(expr Expr) And
 }
 
+// DualOperator wraps a basic Dual method.
 type DualOperator interface {
-	Dual() GenericExpr
+	// Dual method returns the logic Dual of an Expr. The Dual of a boolean Expr is the Expr one obtains
+	// by interchanging addition and multiplication and interchanging 0’s and 1’s.
+	// see: https://www.cs.fsu.edu/~lacher/courses/MAD3105/lectures/s4_1boolfn.pdf
+	Dual() Expr
 }
 
+// ExprGetter wraps some methods to retrieve the Expr.
+type ExprGetter interface {
+	// GetType methods return the type of the Expr in form of a string.
+	GetType() string
+	// GetExprs methods returns a []Expr representing the Expr.
+	GetExprs() []Expr
+}
+// NodeGetter wraps the method for getting the NodeSet from an Expr.
+type NodeGetter interface {
+	// GetNodes returns a NodeSet with the NodeSet in an Expr.
+	GetNodes() NodeSet
+}
+// NumLeavesGetter wraps the method for getting the number of leaves in an Expr.
+type NumLeavesGetter interface {
+	// NumLeaves returns the number of leaves in an Expr. e.g. ( a + b ) * a results in 3 leaves.
+	NumLeaves() uint
+}
+
+// ResilienceCalculator wraps the method for calculating the resilience of a quorum.
 type ResilienceCalculator interface {
+	// Resilience returns the resilience of an Expr.
 	Resilience() uint
 }
 
+// MinFailuresCalculator wraps the method for calculating the minimum failure.
+type MinFailuresCalculator interface {
+	// MinFailures returns the number of minimum failures for an Expr.
+	MinFailures() uint
+}
+
+// DuplicateChecker wraps the method for checking if an Expr contains a duplicate.
 type DuplicateChecker interface {
 	DupFree() bool
 }
 
-type NodeRetriever interface {
-	Nodes() NodeSet
-}
-
+// Quorum wraps the methods for calculating a quorum from an Expr and to check if an ExprSet is a valid Quorum.
 type Quorum interface {
+	// Quorums returns a chan exposing the quorums derived from an Expr.
 	Quorums() chan ExprSet
+	// IsQuorum returns true if the ExprSet is a quorum otherwise it returns false.
 	IsQuorum(set ExprSet) bool
 }
-
-type MinFailuresChecker interface {
-	MinFailures() uint
-}
-
-type QuorumExpression interface {
-	NumLeaves() uint
-}
-
-type GenericExpr interface {
+// Expr represent an logic expressions between nodes or other expressions and its own methods.
+type Expr interface {
 	Quorum
-	ExprOperator
+	NodesOperator
+	ExprGetter
 	DualOperator
-	NodeRetriever
+	NodeGetter
 	DuplicateChecker
-	MinFailuresChecker
+	MinFailuresCalculator
 	ResilienceCalculator
-	QuorumExpression
+	NumLeavesGetter
 	fmt.Stringer
 }
 
-// Node in a quorum
+// Node represents a node in an Expr.
 type Node struct {
 	Name          string
 	ReadCapacity  *uint
@@ -69,6 +96,7 @@ type Node struct {
 	Latency       *uint
 }
 
+// NewNode define a new node with a name.
 func NewNode(name string) Node {
 	node := Node{}
 	node.Name = name
@@ -80,6 +108,7 @@ func NewNode(name string) Node {
 	return node
 }
 
+// NewNodeWithCapacityAndLatency defines a new node with a name, read and write capacities and a latency.
 func NewNodeWithCapacityAndLatency(name string, readCapacity uint, writeCapacity uint, latency uint) Node {
 	node := Node{}
 
@@ -91,6 +120,7 @@ func NewNodeWithCapacityAndLatency(name string, readCapacity uint, writeCapacity
 	return node
 }
 
+// NewNodeWithCapacity defines a new node with a name a read and write capacity.
 func NewNodeWithCapacity(name string, readCapacity uint, writeCapacity uint) Node {
 	node := Node{}
 
@@ -101,6 +131,7 @@ func NewNodeWithCapacity(name string, readCapacity uint, writeCapacity uint) Nod
 	return node
 }
 
+// NewNodeWithLatency defines a new node with a name and a latency.
 func NewNodeWithLatency(name string, latency uint) Node {
 	node := Node{}
 
@@ -113,12 +144,12 @@ func NewNodeWithLatency(name string, latency uint) Node {
 	return node
 }
 
-func (n Node) Add(expr GenericExpr) Or {
-	return orExpr(n, expr)
+func (n Node) Add(expr Expr) Or {
+	return mergeWithOr(n, expr)
 }
 
-func (n Node) Multiply(expr GenericExpr) And {
-	return andExpr(n, expr)
+func (n Node) Multiply(expr Expr) And {
+	return mergeWithAnd(n, expr)
 }
 
 func (n Node) Quorums() chan ExprSet {
@@ -142,7 +173,7 @@ func (n Node) IsQuorum(xs ExprSet) bool {
 	return false
 }
 
-func (n Node) Nodes() NodeSet {
+func (n Node) GetNodes() NodeSet {
 	return NodeSet{n: true}
 }
 
@@ -169,36 +200,36 @@ func (n Node) Resilience() uint {
 }
 
 func (n Node) DupFree() bool {
-	return uint(len(n.Nodes())) == n.NumLeaves()
+	return uint(len(n.GetNodes())) == n.NumLeaves()
 }
 
 func (n Node) String() string {
 	return n.Name
 }
 
-func (n Node) Expr() string {
+func (n Node) GetType() string {
 	return "Node"
 }
 
-func (n Node) Exprs() []GenericExpr {
-	return []GenericExpr{n}
+func (n Node) GetExprs() []Expr {
+	return []Expr{n}
 }
 
-func (n Node) Dual() GenericExpr {
+func (n Node) Dual() Expr {
 	return n
 }
 
-// Or represents an logical or expression
+// Or represents a logical Or expression between others nodes or expressions.
 type Or struct {
-	Es []GenericExpr
+	Es []Expr
 }
 
-func (e Or) Add(rhs GenericExpr) Or {
-	return orExpr(e, rhs)
+func (e Or) Add(rhs Expr) Or {
+	return mergeWithOr(e, rhs)
 }
 
-func (e Or) Multiply(rhs GenericExpr) And {
-	return andExpr(e, rhs)
+func (e Or) Multiply(rhs Expr) And {
+	return mergeWithAnd(e, rhs)
 }
 
 func (e Or) Quorums() chan ExprSet {
@@ -226,11 +257,11 @@ func (e Or) IsQuorum(xs ExprSet) bool {
 	return found
 }
 
-func (e Or) Nodes() NodeSet {
+func (e Or) GetNodes() NodeSet {
 	var final = make(NodeSet)
 
 	for _, es := range e.Es {
-		for n := range es.Nodes() {
+		for n := range es.GetNodes() {
 			final[n] = true
 		}
 	}
@@ -272,7 +303,7 @@ func (e Or) Resilience() uint {
 }
 
 func (e Or) DupFree() bool {
-	return uint(len(e.Nodes())) == e.NumLeaves()
+	return uint(len(e.GetNodes())) == e.NumLeaves()
 }
 
 func (e Or) String() string {
@@ -294,33 +325,33 @@ func (e Or) String() string {
 	return sb.String()
 }
 
-func (e Or) Expr() string {
+func (e Or) GetType() string {
 	return "Or"
 }
 
-func (e Or) Exprs() []GenericExpr {
+func (e Or) GetExprs() []Expr {
 	return e.Es
 }
 
-func (e Or) Dual() GenericExpr {
-	dualExprs := make([]GenericExpr, 0)
+func (e Or) Dual() Expr {
+	dualExprs := make([]Expr, 0)
 	for _, es := range e.Es {
 		dualExprs = append(dualExprs, es.Dual())
 	}
 	return And{Es: dualExprs}
 }
 
-// And represents a logical and operation in the quorums
+//And represents a logical And expression between others nodes or expressions.
 type And struct {
-	Es []GenericExpr
+	Es []Expr
 }
 
-func (e And) Add(rhs GenericExpr) Or {
-	return orExpr(e, rhs)
+func (e And) Add(rhs Expr) Or {
+	return mergeWithOr(e, rhs)
 }
 
-func (e And) Multiply(rhs GenericExpr) And {
-	return andExpr(e, rhs)
+func (e And) Multiply(rhs Expr) And {
+	return mergeWithAnd(e, rhs)
 }
 
 func (e And) Quorums() chan ExprSet {
@@ -337,10 +368,10 @@ func (e And) Quorums() chan ExprSet {
 	}
 
 	go func() {
-		for _, sets := range productInterfaces(flatQuorums...) {
+		for _, sets := range product(flatQuorums...) {
 			set := make(ExprSet)
 			for _, t := range sets {
-				set = mergeGenericExprSets(set, t.(ExprSet))
+				set = mergeExprSets(set, t.(ExprSet))
 			}
 			chnl <- set
 		}
@@ -362,11 +393,11 @@ func (e And) IsQuorum(xs ExprSet) bool {
 	return found
 }
 
-func (e And) Nodes() NodeSet {
+func (e And) GetNodes() NodeSet {
 	var final = make(NodeSet)
 
 	for _, es := range e.Es {
-		for n := range es.Nodes() {
+		for n := range es.GetNodes() {
 			final[n] = true
 		}
 	}
@@ -410,7 +441,7 @@ func (e And) Resilience() uint {
 }
 
 func (e And) DupFree() bool {
-	return uint(len(e.Nodes())) == e.NumLeaves()
+	return uint(len(e.GetNodes())) == e.NumLeaves()
 }
 
 func (e And) String() string {
@@ -432,16 +463,16 @@ func (e And) String() string {
 	return sb.String()
 }
 
-func (e And) Expr() string {
+func (e And) GetType() string {
 	return "And"
 }
 
-func (e And) Exprs() []GenericExpr {
+func (e And) GetExprs() []Expr {
 	return e.Es
 }
 
-func (e And) Dual() GenericExpr {
-	dualExprs := make([]GenericExpr, 0)
+func (e And) Dual() Expr {
+	dualExprs := make([]Expr, 0)
 	for _, es := range e.Es {
 		dualExprs = append(dualExprs, es.Dual())
 	}
@@ -450,11 +481,11 @@ func (e And) Dual() GenericExpr {
 
 // Choose represents a logical
 type Choose struct {
-	Es []GenericExpr
+	Es []Expr
 	K  int
 }
 
-func NewChoose(k int, es []GenericExpr) (GenericExpr, error) {
+func NewChoose(k int, es []Expr) (Expr, error) {
 	if len(es) == 0 {
 		return Choose{}, fmt.Errorf("no expressions provided")
 	}
@@ -478,12 +509,12 @@ func NewChoose(k int, es []GenericExpr) (GenericExpr, error) {
 	return Choose{Es: es, K: k}, nil
 }
 
-func (e Choose) Add(rhs GenericExpr) Or {
-	return orExpr(e, rhs)
+func (e Choose) Add(rhs Expr) Or {
+	return mergeWithOr(e, rhs)
 }
 
-func (e Choose) Multiply(rhs GenericExpr) And {
-	return andExpr(e, rhs)
+func (e Choose) Multiply(rhs Expr) And {
+	return mergeWithAnd(e, rhs)
 }
 
 func (e Choose) Quorums() chan ExprSet {
@@ -501,10 +532,10 @@ func (e Choose) Quorums() chan ExprSet {
 			combinedQuorums = append(combinedQuorums, quorums)
 
 		}
-		for _, s := range productInterfaces(combinedQuorums...) {
+		for _, s := range product(combinedQuorums...) {
 			set := make(ExprSet)
 			for _, t := range s {
-				set = mergeGenericExprSets(set, t.(ExprSet))
+				set = mergeExprSets(set, t.(ExprSet))
 			}
 			sets = append(sets, set)
 		}
@@ -530,11 +561,11 @@ func (e Choose) IsQuorum(xs ExprSet) bool {
 	return sum >= e.K
 }
 
-func (e Choose) Nodes() NodeSet {
+func (e Choose) GetNodes() NodeSet {
 	var final = make(NodeSet)
 
 	for _, es := range e.Es {
-		for n := range es.Nodes() {
+		for n := range es.GetNodes() {
 			final[n] = true
 		}
 	}
@@ -587,7 +618,7 @@ func (e Choose) Resilience() uint {
 }
 
 func (e Choose) DupFree() bool {
-	return uint(len(e.Nodes())) == e.NumLeaves()
+	return uint(len(e.GetNodes())) == e.NumLeaves()
 }
 
 func (e Choose) String() string {
@@ -609,49 +640,50 @@ func (e Choose) String() string {
 	return sb.String()
 }
 
-func (e Choose) Expr() string {
+func (e Choose) GetType() string {
 	return "Choose"
 }
 
-func (e Choose) Exprs() []GenericExpr {
+func (e Choose) GetExprs() []Expr {
 	return e.Es
 }
 
-func (e Choose) Dual() GenericExpr {
-	dualExprs := make([]GenericExpr, 0)
+func (e Choose) Dual() Expr {
+	dualExprs := make([]Expr, 0)
 	for _, es := range e.Es {
 		dualExprs = append(dualExprs, es.Dual())
 	}
 	return Choose{Es: dualExprs, K: len(e.Es) - e.K + 1}
 }
 
-// Additional methods
-
-func orExpr(lhs GenericExpr, rhs GenericExpr) Or {
-	if lhs.Expr() == "Or" && rhs.Expr() == "Or" {
-		return Or{append(lhs.Exprs(), rhs.Exprs()...)}
-	} else if lhs.Expr() == "Or" {
-		return Or{append(lhs.Exprs(), rhs)}
-	} else if rhs.Expr() == "Or" {
-		return Or{append([]GenericExpr{lhs}, rhs.Exprs()...)}
+// mergeWithOr returns a Or expression between two input expressions.
+func mergeWithOr(lhs Expr, rhs Expr) Or {
+	if lhs.GetType() == "Or" && rhs.GetType() == "Or" {
+		return Or{append(lhs.GetExprs(), rhs.GetExprs()...)}
+	} else if lhs.GetType() == "Or" {
+		return Or{append(lhs.GetExprs(), rhs)}
+	} else if rhs.GetType() == "Or" {
+		return Or{append([]Expr{lhs}, rhs.GetExprs()...)}
 	} else {
-		return Or{[]GenericExpr{lhs, rhs}}
+		return Or{[]Expr{lhs, rhs}}
 	}
 }
 
-func andExpr(lhs GenericExpr, rhs GenericExpr) And {
-	if lhs.Expr() == "And" && rhs.Expr() == "And" {
-		return And{append(lhs.Exprs(), rhs.Exprs()...)}
-	} else if lhs.Expr() == "And" {
-		return And{append(lhs.Exprs(), rhs)}
-	} else if rhs.Expr() == "And" {
-		return And{append([]GenericExpr{lhs}, rhs.Exprs()...)}
+// mergeWithAnd returns an And expression between two input expressions.
+func mergeWithAnd(lhs Expr, rhs Expr) And {
+	if lhs.GetType() == "And" && rhs.GetType() == "And" {
+		return And{append(lhs.GetExprs(), rhs.GetExprs()...)}
+	} else if lhs.GetType() == "And" {
+		return And{append(lhs.GetExprs(), rhs)}
+	} else if rhs.GetType() == "And" {
+		return And{append([]Expr{lhs}, rhs.GetExprs()...)}
 	} else {
-		return And{[]GenericExpr{lhs, rhs}}
+		return And{[]Expr{lhs, rhs}}
 	}
 }
 
-func mergeGenericExprSets(maps ...ExprSet) ExprSet {
+// mergeExprSets returns a merge between multiple ExprSet.
+func mergeExprSets(maps ...ExprSet) ExprSet {
 	result := make(ExprSet)
 	for _, m := range maps {
 		for k, v := range m {
@@ -661,7 +693,8 @@ func mergeGenericExprSets(maps ...ExprSet) ExprSet {
 	return result
 }
 
-func productInterfaces(sets ...[]interface{}) [][]interface{} {
+//product returns the cartesian product between a list of inputs.
+func product(sets ...[]interface{}) [][]interface{} {
 	result := make([][]interface{}, 0)
 	nextIndex := func(ix []int, lens func(i int) int) {
 		for j := len(ix) - 1; j >= 0; j-- {
@@ -685,8 +718,8 @@ func productInterfaces(sets ...[]interface{}) [][]interface{} {
 	return result
 }
 
-// Returns N combinations of GenericExpr
-func combinations(set []GenericExpr, n int) (subsets [][]GenericExpr) {
+//combinations returns n combinations given a list of input Expr
+func combinations(set []Expr, n int) (subsets [][]Expr) {
 	length := len(set)
 
 	if n > len(set) {
@@ -698,7 +731,7 @@ func combinations(set []GenericExpr, n int) (subsets [][]GenericExpr) {
 			continue
 		}
 
-		var ss []GenericExpr
+		var ss []Expr
 
 		for object := 0; object < length; object++ {
 			if (subsetBits>>object)&1 == 1 {
@@ -710,8 +743,9 @@ func combinations(set []GenericExpr, n int) (subsets [][]GenericExpr) {
 	return subsets
 }
 
-func exprMapToList(input ExprSet) []GenericExpr {
-	result := make([]GenericExpr, 0)
+//exprSetToArr given an input ExprSet returns an []Expr.
+func exprSetToArr(input ExprSet) []Expr {
+	result := make([]Expr, 0)
 
 	for k := range input {
 		result = append(result, k)
@@ -722,7 +756,7 @@ func exprMapToList(input ExprSet) []GenericExpr {
 
 func minHittingSet(quorums []ExprSet) uint {
 
-	keys := make([]GenericExpr, 0)
+	keys := make([]Expr, 0)
 
 	def := lpDefinition{}
 	def.Vars = make([]float64, 0)
@@ -731,7 +765,7 @@ func minHittingSet(quorums []ExprSet) uint {
 
 	simp := clp.NewSimplex()
 
-	uniqueKeys := make(map[GenericExpr]float64)
+	uniqueKeys := make(map[Expr]float64)
 
 	for _, xs := range quorums {
 		for k := range xs {

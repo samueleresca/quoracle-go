@@ -267,10 +267,10 @@ func TestMakeStrategy(t *testing.T) {
 				{ExprSet{a: true}, 1},
 				{ExprSet{c: true, d: true}, 1}}},
 			Sigma{Values: []SigmaRecord{
-				{map[GenericExpr]bool{a: true, c: true}, 1},
-				{map[GenericExpr]bool{a: true, d: true}, 1},
-				{map[GenericExpr]bool{b: true, c: true}, 1},
-				{map[GenericExpr]bool{b: true, d: true}, 1}}})
+				{map[Expr]bool{a: true, c: true}, 1},
+				{map[Expr]bool{a: true, d: true}, 1},
+				{map[Expr]bool{b: true, c: true}, 1},
+				{map[Expr]bool{b: true, d: true}, 1}}})
 
 	assert.Assert(t, err != nil)
 }
