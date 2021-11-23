@@ -213,7 +213,7 @@ func TestLoadCapUtil(t *testing.T) {
 
 	// dynamic read fraction values
 
-	rf = QuorumDistribution{values: map[float64]float64{0.8: 0.7, 0.5: 0.3}}
+	rf = QuorumDistribution{values: DistributionValues{0.8: 0.7, 0.5: 0.3}}
 
 	nodeLoads := map[Node]float64{
 		a: 0.7*(0.8/50*0.75+0.2/10*(0.1+0.2)) +

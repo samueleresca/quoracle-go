@@ -743,8 +743,8 @@ func combinations(set []Expr, n int) (subsets [][]Expr) {
 	return subsets
 }
 
-//exprSetToArr given an input ExprSet returns an []Expr.
-func exprSetToArr(input ExprSet) []Expr {
+//setToArr given an input ExprSet returns an []Expr.
+func setToArr(input ExprSet) []Expr {
 	result := make([]Expr, 0)
 
 	for k := range input {

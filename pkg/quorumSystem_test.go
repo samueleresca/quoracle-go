@@ -606,7 +606,7 @@ func TestOptimalStrategyIllegalSpecs(t *testing.T) {
 
 	_, err := qs.Load(strategyOptions)
 
-	assert.Assert(t, err.Error() == "a load limit cannot be set when optimizing for load")
+	assert.Assert(t, err.Error() == "a getLoadObjective limit cannot be set when optimizing for getLoadObjective")
 
 	networkLimit := 1.0
 	strategyOptions = StrategyOptions{

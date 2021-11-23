@@ -3,10 +3,8 @@ package pkg
 import (
 	wr "github.com/mroth/weightedrand"
 	"math/rand"
-	"sort"
 	"time"
 )
-
 
 // OptimizeType describes an optimization type
 type OptimizeType string
@@ -40,6 +38,7 @@ type SigmaRecord struct {
 	Quorum      ExprSet
 	Probability Probability
 }
+
 type Sigma struct {
 	Values []SigmaRecord
 }
@@ -290,34 +289,18 @@ func (s Strategy) nodeThroughput(node Node, fr float64) float64 {
 	return capacity * (fr*s.nodeToReadProbability[node] + fw*s.nodeToWriteProbability[node])
 }
 
-// Sorter
-type nodeSorter struct {
-	nodes []Node
-	by    func(p1, p2 *Node) bool // Closure used in the Less method.
-}
+func initStrategyOptions(initOptions StrategyOptions) func(options *StrategyOptions) error {
+	init := func(options *StrategyOptions) error {
+		options.Optimize = initOptions.Optimize
+		options.LatencyLimit = initOptions.LatencyLimit
+		options.NetworkLimit = initOptions.NetworkLimit
+		options.LoadLimit = initOptions.LoadLimit
+		options.F = initOptions.F
+		options.ReadFraction = initOptions.ReadFraction
+		options.WriteFraction = initOptions.WriteFraction
 
-// Len is part of sort.Interface.
-func (ns *nodeSorter) Len() int {
-	return len(ns.nodes)
-}
-
-// Swap is part of sort.Interface.
-func (ns *nodeSorter) Swap(i, j int) {
-	ns.nodes[i], ns.nodes[j] = ns.nodes[j], ns.nodes[i]
-}
-
-// Less is part of sort.Interface. It is implemented by calling the "by" closure in the sorter.
-func (ns *nodeSorter) Less(i, j int) bool {
-	return ns.by(&ns.nodes[i], &ns.nodes[j])
-}
-
-type By func(p1, p2 *Node) bool
-
-// Sort is a method on the function type, By, that sorts the argument slice according to the function.
-func (by By) Sort(nodes []Node) {
-	ps := &nodeSorter{
-		nodes: nodes,
-		by:    by, // The Sort method's receiver is the function (closure) that defines the sort order.
+		return nil
 	}
-	sort.Sort(ps)
+	return init
 }
+

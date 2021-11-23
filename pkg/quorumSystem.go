@@ -246,7 +246,7 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 	}
 
 	if sb.Optimize == Load && sb.LoadLimit != nil {
-		return nil, fmt.Errorf("a load limit cannot be set when optimizing for load")
+		return nil, fmt.Errorf("a getLoadObjective limit cannot be set when optimizing for getLoadObjective")
 	}
 
 	if sb.Optimize == Network && sb.NetworkLimit != nil {
@@ -281,11 +281,11 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 	rq = make([]ExprSet, 0)
 	wq = make([]ExprSet, 0)
 
-	for _, e := range qs.fResilientQuorums(sb.F, xs, qs.reads) {
+	for _, e := range qs.getResilientQuorums(sb.F, xs, qs.reads) {
 		rq = append(rq, e)
 	}
 
-	for _, e := range qs.fResilientQuorums(sb.F, xs, qs.writes) {
+	for _, e := range qs.getResilientQuorums(sb.F, xs, qs.writes) {
 		wq = append(wq, e)
 	}
 
@@ -427,20 +427,51 @@ func (qs QuorumSystem) minimize(sets []ExprSet) []ExprSet {
 	return minimalElements
 }
 
-func (qs QuorumSystem) fResilientQuorums(f int, xs []Node, e Expr) []ExprSet {
-	s := ExprSet{}
+// getResilientQuorums returns a set of quorums that has a resilience f.
+func (qs QuorumSystem) getResilientQuorums(f int, n []Node, e Expr) []ExprSet {
+	cur := ExprSet{}
 	result := make([]ExprSet, 0)
-	return fResilientHelper(result, f, xs, e, s, 0)
+	return getResilientQuorumsHelper(result, f, n, e, cur, 0)
 }
 
+func getResilientQuorumsHelper(exprSets []ExprSet, minResilience int, n []Node, e Quorum, cur ExprSet, i int) []ExprSet {
+	minf := minResilience
+
+	if minResilience > len(cur) {
+		minf = len(cur)
+	}
+
+	isQuorum := true
+	combinationSets := combinations(setToArr(cur), minf)
+
+	for _, failure := range combinationSets {
+		if !e.IsQuorum(remove(cur, failure...)) {
+			isQuorum = false
+		}
+	}
+
+	if isQuorum && len(combinationSets) > 0 {
+		exprSets = append(exprSets, cur)
+		return exprSets
+	}
+
+	for j := i; j < len(n); j++ {
+		cur[n[j]] = true
+		defer delete(cur, n[j])
+		return getResilientQuorumsHelper(exprSets, minResilience, n, e, copySet(cur), j+1)
+	}
+	return exprSets
+}
+
+// readQuorumLatency return the latency of a read quorum.
 func (qs QuorumSystem) readQuorumLatency(quorum []Node) (*uint, error) {
 	return qs.quorumLatency(quorum, qs.IsReadQuorum)
 }
-
+// writeQuorumLatency returns the latency of a write quorum.
 func (qs QuorumSystem) writeQuorumLatency(quorum []Node) (*uint, error) {
 	return qs.quorumLatency(quorum, qs.IsWriteQuorum)
 }
-
+// quorumLatency returns the minimum latency of a given quorum.
 func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(set ExprSet) bool) (*uint, error) {
 	sortedQ := make([]Node, 0)
 
@@ -470,11 +501,12 @@ func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(set ExprSet) b
 
 }
 
+
 func (qs QuorumSystem) loadOptimalStrategy(
 	optimize OptimizeType,
 	readQuorums []ExprSet,
 	writeQuorums []ExprSet,
-	readFraction map[float64]float64,
+	readFraction DistributionValues,
 	loadLimit *float64,
 	networkLimit *float64,
 	latencyLimit *float64) (*Strategy, error) {
@@ -482,7 +514,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	ninf := math.Inf(-1)
 	pinf := math.Inf(1)
 
-	readQuorumVars, xToReadQuorumVars, writeQuorumVars, xToWriteQuorumVars := defineOptimizationVars(readQuorums, writeQuorums)
+	readQuorumVars, xToReadQuorumVars, writeQuorumVars, xToWriteQuorumVars := getOptimizationVars(readQuorums, writeQuorums)
 
 	fr := 0.0
 
@@ -667,19 +699,19 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	def.Objectives = make([][]float64, 0)
 
 	if optimize == Load {
-		def = load(readFraction, loadLimit, frLoad)
+		def = getLoadObjective(readFraction, loadLimit, frLoad)
 	} else if optimize == Network {
 		def = network(nil)
 	} else if optimize == Latency {
 		def, _ = latency(nil)
 	}
 
-	readQConstraint, writeQConstraint := defineBaseConstraints(optimize, readQuorumVars, writeQuorumVars)
+	readQConstraint, writeQConstraint := getBaseConstraints(optimize, readQuorumVars, writeQuorumVars)
 	def.Objectives = append(def.Objectives, readQConstraint)
 	def.Objectives = append(def.Objectives, writeQConstraint)
 
 	if loadLimit != nil {
-		defTemp := load(readFraction, loadLimit, frLoad)
+		defTemp := getLoadObjective(readFraction, loadLimit, frLoad)
 		def.Vars = append(def.Vars, 0)
 
 		for r := 0; r < len(def.Objectives); r++ {
@@ -732,17 +764,8 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	return &newStrategy, nil
 }
 
-func merge(obj [][]float64, lobj [][]float64) [][]float64 {
-
-	if len(obj[0]) != len(lobj[0]) {
-		lobj[0] = insertAt(lobj[0], len(lobj[0])-1, 0)
-	}
-	obj = append(obj, lobj[0])
-
-	return obj
-}
-
-func defineOptimizationVars(readQuorums []ExprSet, writeQuorums []ExprSet) (readQuorumVars []lpVariable, xToReadQuorumVars map[Expr][]lpVariable, writeQuorumVars []lpVariable, xToWriteQuorumVars map[Expr][]lpVariable) {
+// getOptimizationVars returns the list lpVariable  for the quorums.
+func getOptimizationVars(readQuorums []ExprSet, writeQuorums []ExprSet) (readQuorumVars []lpVariable, xToReadQuorumVars map[Expr][]lpVariable, writeQuorumVars []lpVariable, xToWriteQuorumVars map[Expr][]lpVariable) {
 	readQuorumVars = make([]lpVariable, 0)
 	xToReadQuorumVars = make(map[Expr][]lpVariable)
 
@@ -780,7 +803,8 @@ func defineOptimizationVars(readQuorums []ExprSet, writeQuorums []ExprSet) (read
 	return readQuorumVars, xToReadQuorumVars, writeQuorumVars, xToWriteQuorumVars
 }
 
-func defineBaseConstraints(optimize OptimizeType, readQuorumVars []lpVariable, writeQuorumVars []lpVariable) (readQConstraint []float64, writeQConstraint []float64) {
+// getBaseConstraints returns the list of lpVariable for the strategy optimization process.
+func getBaseConstraints(optimize OptimizeType, readQuorumVars []lpVariable, writeQuorumVars []lpVariable) (readQConstraint []float64, writeQConstraint []float64) {
 	// read quorum constraint
 	readQConstraint = make([]float64, 0)
 	readQConstraint = append(readQConstraint, 1)
@@ -819,7 +843,8 @@ func defineBaseConstraints(optimize OptimizeType, readQuorumVars []lpVariable, w
 	return readQConstraint, writeQConstraint
 }
 
-func load(readFraction map[float64]float64, loadLimit *float64,
+// getLoadObjective returns the lpDefinition for the load objective.
+func getLoadObjective(readFraction DistributionValues, loadLimit *float64,
 	frLoad func(loadLimit *float64, fr float64) (lpDefinition, error)) lpDefinition {
 
 	def := lpDefinition{}
@@ -857,8 +882,17 @@ func insertAt(a []float64, index int, value float64) []float64 {
 	return a
 }
 
+func merge(obj [][]float64, lobj [][]float64) [][]float64 {
+
+	if len(obj[0]) != len(lobj[0]) {
+		lobj[0] = insertAt(lobj[0], len(lobj[0])-1, 0)
+	}
+	obj = append(obj, lobj[0])
+
+	return obj
+}
 func remove(set ExprSet, g ...Expr) ExprSet {
-	newSet := copy(set)
+	newSet := copySet(set)
 
 	for _, e := range g {
 		delete(newSet, e)
@@ -867,7 +901,7 @@ func remove(set ExprSet, g ...Expr) ExprSet {
 	return newSet
 }
 
-func copy(set ExprSet) ExprSet {
+func copySet(set ExprSet) ExprSet {
 	newSet := make(ExprSet)
 
 	for k, v := range set {
@@ -876,48 +910,34 @@ func copy(set ExprSet) ExprSet {
 	return newSet
 }
 
-func initStrategyOptions(initOptions StrategyOptions) func(options *StrategyOptions) error {
-	init := func(options *StrategyOptions) error {
-		options.Optimize = initOptions.Optimize
-		options.LatencyLimit = initOptions.LatencyLimit
-		options.NetworkLimit = initOptions.NetworkLimit
-		options.LoadLimit = initOptions.LoadLimit
-		options.F = initOptions.F
-		options.ReadFraction = initOptions.ReadFraction
-		options.WriteFraction = initOptions.WriteFraction
-
-		return nil
-	}
-	return init
+// Sorter
+type nodeSorter struct {
+	nodes []Node
+	by    func(p1, p2 *Node) bool // Closure used in the Less method.
 }
 
-func fResilientHelper(exprSets []ExprSet, minResilience int, xs []Node, e Quorum, s ExprSet, i int) []ExprSet {
-	minf := minResilience
-
-	if minResilience > len(s) {
-		minf = len(s)
-	}
-
-	isAll := true
-	combinationSets := combinations(exprSetToArr(s), minf)
-
-	for _, failure := range combinationSets {
-		if !e.IsQuorum(remove(s, failure...)) {
-			isAll = false
-		}
-	}
-
-	if isAll && len(combinationSets) > 0 {
-		exprSets = append(exprSets, s)
-		return exprSets
-	}
-
-	for j := i; j < len(xs); j++ {
-		s[xs[j]] = true
-		defer delete(s, xs[j])
-		return fResilientHelper(exprSets, minResilience, xs, e, copy(s), j+1)
-	}
-	return exprSets
+// Len is part of sort.Interface.
+func (ns *nodeSorter) Len() int {
+	return len(ns.nodes)
 }
 
+// Swap is part of sort.Interface.
+func (ns *nodeSorter) Swap(i, j int) {
+	ns.nodes[i], ns.nodes[j] = ns.nodes[j], ns.nodes[i]
+}
 
+// Less is part of sort.Interface. It is implemented by calling the "by" closure in the sorter.
+func (ns *nodeSorter) Less(i, j int) bool {
+	return ns.by(&ns.nodes[i], &ns.nodes[j])
+}
+
+type By func(p1, p2 *Node) bool
+
+// Sort is a method on the function type, By, that sorts the argument slice according to the function.
+func (by By) Sort(nodes []Node) {
+	ps := &nodeSorter{
+		nodes: nodes,
+		by:    by, // The Sort method's receiver is the function (closure) that defines the sort order.
+	}
+	sort.Sort(ps)
+}

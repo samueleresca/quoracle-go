@@ -21,7 +21,7 @@ func TestPartitions(t *testing.T) {
 		assert.Assert(t, reflect.DeepEqual(r, [][]Expr{{node1}}))
 	}
 
-	result := partitionings([]Expr{node1, node2})
+	result := partitionings([]Expr{ node1, node2 })
 
 	result1 := <-result
 	result2 := <-result
@@ -29,7 +29,7 @@ func TestPartitions(t *testing.T) {
 	assert.Assert(t, reflect.DeepEqual(result1, [][]Expr{{node1}, {node2}}) == true)
 	assert.Assert(t, reflect.DeepEqual(result2, [][]Expr{{node1, node2}}) == true)
 
-	expected := map[string]bool{
+	expected := map[string]bool {
 		"[[1] [2] [3]]": true,
 		"[[1 2] [3]]":   true,
 		"[[2] [1 3]]":   true,
@@ -63,6 +63,7 @@ func TestPartitions(t *testing.T) {
 	}
 
 	index = 0
+
 	for actual := range partitionings([]Expr{node1, node2, node3, node4}) {
 		_, ok := expected[fmt.Sprint(actual)]
 		assert.Assert(t, ok == true, actual)
