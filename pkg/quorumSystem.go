@@ -10,6 +10,9 @@ import (
 	"time"
 )
 
+
+type nameToNode = map[string]Node
+
 type OptimizeType string
 
 const (
@@ -21,7 +24,7 @@ const (
 type QuorumSystem struct {
 	reads   Expr
 	writes     Expr
-	nameToNode map[string]Node
+	nameToNode nameToNode
 }
 
 type StrategyOptions struct {
@@ -59,7 +62,7 @@ func NewQuorumSystem(reads Expr, writes Expr) (QuorumSystem, error) {
 	}
 	qs := QuorumSystem{reads: reads, writes: writes}
 
-	qs.nameToNode = map[string]Node{}
+	qs.nameToNode = nameToNode{}
 
 	for node := range qs.GetNodes() {
 		qs.nameToNode[node.Name] = node
@@ -71,7 +74,7 @@ func NewQuorumSystem(reads Expr, writes Expr) (QuorumSystem, error) {
 func NewQuorumSystemWithReads(reads Expr) QuorumSystem {
 	qs, _ := NewQuorumSystem(reads, reads.Dual())
 
-	qs.nameToNode = map[string]Node{}
+	qs.nameToNode = nameToNode{}
 
 	for node := range qs.GetNodes() {
 		qs.nameToNode[node.Name] = node
@@ -83,7 +86,7 @@ func NewQuorumSystemWithReads(reads Expr) QuorumSystem {
 func NewQuorumSystemWithWrites(writes Expr) QuorumSystem {
 	qs := QuorumSystem{reads: writes.Dual(), writes: writes}
 
-	qs.nameToNode = map[string]Node{}
+	qs.nameToNode = nameToNode{}
 
 	for node := range qs.GetNodes() {
 		qs.nameToNode[node.Name] = node
