@@ -20,25 +20,6 @@ type QuorumSystem struct {
 	nameToNode nameToNode
 }
 
-
-type OptimizeType string
-const (
-	Load    OptimizeType = "Load"
-	Network OptimizeType = "Network"
-	Latency OptimizeType = "Latency"
-)
-
-// StrategyOptions describes the quorum system strategy options.
-type StrategyOptions struct {
-	Optimize      OptimizeType
-	LoadLimit     *float64
-	NetworkLimit  *float64
-	LatencyLimit  *float64
-	ReadFraction  Distribution
-	WriteFraction Distribution
-	F             int
-}
-
 //lpVariable describe a linear programming variable for the quorum system.
 type lpVariable struct {
 	Name   string

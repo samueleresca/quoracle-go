@@ -7,13 +7,33 @@ import (
 	"time"
 )
 
+
+// OptimizeType describes an optimization type
+type OptimizeType string
+const (
+	Load    OptimizeType = "Load"
+	Network OptimizeType = "Network"
+	Latency OptimizeType = "Latency"
+)
+
+// StrategyOptions describes the quorum system strategy options.
+type StrategyOptions struct {
+	Optimize      OptimizeType
+	LoadLimit     *float64
+	NetworkLimit  *float64
+	LatencyLimit  *float64
+	ReadFraction  Distribution
+	WriteFraction Distribution
+	F             int
+}
+
 //Strategy
 type Strategy struct {
 	Qs                QuorumSystem
 	SigmaR            Sigma
-	SigmaW            Sigma
-	XReadProbability  map[Node]float64
-	XWriteProbability map[Node]float64
+	SigmaW                Sigma
+	nodeToReadProbability  map[Node]Probability
+	nodeToWriteProbability map[Node]Probability
 }
 
 type SigmaRecord struct {
@@ -42,8 +62,8 @@ func NewStrategy(quorumSystem QuorumSystem, sigmaR Sigma, sigmaW Sigma) Strategy
 		}
 	}
 
-	newStrategy.XWriteProbability = xWriteProbability
-	newStrategy.XReadProbability = xReadProbability
+	newStrategy.nodeToWriteProbability = xWriteProbability
+	newStrategy.nodeToReadProbability = xReadProbability
 
 	return newStrategy
 }
@@ -255,8 +275,8 @@ func (s Strategy) maxLoad(fr float64) float64 {
 
 func (s Strategy) nodeLoad(node Node, fr float64) float64 {
 	fw := 1 - fr
-	return fr*s.XReadProbability[node]/float64(*node.ReadCapacity) +
-		fw*s.XWriteProbability[node]/float64(*node.WriteCapacity)
+	return fr*s.nodeToReadProbability[node]/float64(*node.ReadCapacity) +
+		fw*s.nodeToWriteProbability[node]/float64(*node.WriteCapacity)
 }
 
 func (s Strategy) nodeUtilization(node Node, fr float64) float64 {
@@ -267,7 +287,7 @@ func (s Strategy) nodeThroughput(node Node, fr float64) float64 {
 	capacity := 1 / s.maxLoad(fr)
 	fw := 1 - fr
 
-	return capacity * (fr*s.XReadProbability[node] + fw*s.XWriteProbability[node])
+	return capacity * (fr*s.nodeToReadProbability[node] + fw*s.nodeToWriteProbability[node])
 }
 
 // Sorter
