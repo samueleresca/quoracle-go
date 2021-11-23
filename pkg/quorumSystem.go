@@ -433,69 +433,6 @@ func (qs QuorumSystem) fResilientQuorums(f int, xs []Node, e Expr) []ExprSet {
 	return fResilientHelper(result, f, xs, e, s, 0)
 }
 
-func initStrategyOptions(initOptions StrategyOptions) func(options *StrategyOptions) error {
-	init := func(options *StrategyOptions) error {
-		options.Optimize = initOptions.Optimize
-		options.LatencyLimit = initOptions.LatencyLimit
-		options.NetworkLimit = initOptions.NetworkLimit
-		options.LoadLimit = initOptions.LoadLimit
-		options.F = initOptions.F
-		options.ReadFraction = initOptions.ReadFraction
-		options.WriteFraction = initOptions.WriteFraction
-
-		return nil
-	}
-	return init
-}
-
-func fResilientHelper(result []ExprSet, f int, xs []Node, e Quorum, s ExprSet, i int) []ExprSet {
-	minf := f
-
-	if f > len(s) {
-		minf = len(s)
-	}
-
-	isAll := true
-	combinationSets := combinations(exprSetToArr(s), minf)
-
-	for _, failure := range combinationSets {
-		if !e.IsQuorum(removeFromExprSet(s, failure)) {
-			isAll = false
-		}
-	}
-
-	if isAll && len(combinationSets) > 0 {
-		result = append(result, s)
-		return result
-	}
-
-	for j := i; j < len(xs); j++ {
-		s[xs[j]] = true
-		defer delete(s, xs[j])
-		return fResilientHelper(result, f, xs, e, copyExprSet(s), j+1)
-	}
-	return result
-}
-
-func removeFromExprSet(set ExprSet, g []Expr) ExprSet {
-	newSet := copyExprSet(set)
-
-	for _, e := range g {
-		delete(newSet, e)
-	}
-
-	return newSet
-}
-
-func copyExprSet(set ExprSet) ExprSet {
-	newSet := make(ExprSet)
-
-	for k, v := range set {
-		newSet[k] = v
-	}
-	return newSet
-}
-
 func (qs QuorumSystem) readQuorumLatency(quorum []Node) (*uint, error) {
 	return qs.quorumLatency(quorum, qs.IsReadQuorum)
 }
@@ -919,3 +856,68 @@ func insertAt(a []float64, index int, value float64) []float64 {
 	a[index] = value
 	return a
 }
+
+func remove(set ExprSet, g ...Expr) ExprSet {
+	newSet := copy(set)
+
+	for _, e := range g {
+		delete(newSet, e)
+	}
+
+	return newSet
+}
+
+func copy(set ExprSet) ExprSet {
+	newSet := make(ExprSet)
+
+	for k, v := range set {
+		newSet[k] = v
+	}
+	return newSet
+}
+
+func initStrategyOptions(initOptions StrategyOptions) func(options *StrategyOptions) error {
+	init := func(options *StrategyOptions) error {
+		options.Optimize = initOptions.Optimize
+		options.LatencyLimit = initOptions.LatencyLimit
+		options.NetworkLimit = initOptions.NetworkLimit
+		options.LoadLimit = initOptions.LoadLimit
+		options.F = initOptions.F
+		options.ReadFraction = initOptions.ReadFraction
+		options.WriteFraction = initOptions.WriteFraction
+
+		return nil
+	}
+	return init
+}
+
+func fResilientHelper(exprSets []ExprSet, minResilience int, xs []Node, e Quorum, s ExprSet, i int) []ExprSet {
+	minf := minResilience
+
+	if minResilience > len(s) {
+		minf = len(s)
+	}
+
+	isAll := true
+	combinationSets := combinations(exprSetToArr(s), minf)
+
+	for _, failure := range combinationSets {
+		if !e.IsQuorum(remove(s, failure...)) {
+			isAll = false
+		}
+	}
+
+	if isAll && len(combinationSets) > 0 {
+		exprSets = append(exprSets, s)
+		return exprSets
+	}
+
+	for j := i; j < len(xs); j++ {
+		s[xs[j]] = true
+		defer delete(s, xs[j])
+		return fResilientHelper(exprSets, minResilience, xs, e, copy(s), j+1)
+	}
+	return exprSets
+}
+
+
