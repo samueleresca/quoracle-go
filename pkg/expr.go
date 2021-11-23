@@ -208,7 +208,7 @@ func (n Node) String() string {
 }
 
 func (n Node) GetType() string {
-	return "Node"
+	return "GetNodeByName"
 }
 
 func (n Node) GetExprs() []Expr {

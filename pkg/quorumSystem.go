@@ -3,30 +3,32 @@ package pkg
 import (
 	"fmt"
 	"github.com/lanl/clp"
-	wr "github.com/mroth/weightedrand"
 	"math"
-	"math/rand"
 	"sort"
-	"time"
 )
 
-
+// nameToNode keeps track of the name to node mapping ( "a"-> Node("a")).
 type nameToNode = map[string]Node
 
-type OptimizeType string
+// QuorumSystem describes a read-write quorum system.
+type QuorumSystem struct {
+	// reads describes the read-quorum.
+	reads   Expr
+	// writes describes the write-quorum.
+	writes     Expr
+	// nameToNode keeps track the name of a node to a GetNodeByName.
+	nameToNode nameToNode
+}
 
+
+type OptimizeType string
 const (
 	Load    OptimizeType = "Load"
 	Network OptimizeType = "Network"
 	Latency OptimizeType = "Latency"
 )
 
-type QuorumSystem struct {
-	reads   Expr
-	writes     Expr
-	nameToNode nameToNode
-}
-
+// StrategyOptions describes the quorum system strategy options.
 type StrategyOptions struct {
 	Optimize      OptimizeType
 	LoadLimit     *float64
@@ -37,6 +39,7 @@ type StrategyOptions struct {
 	F             int
 }
 
+//lpVariable describe a linear programming variable for the quorum system.
 type lpVariable struct {
 	Name   string
 	Value  float64
@@ -46,12 +49,14 @@ type lpVariable struct {
 	Quorum ExprSet
 }
 
+// lpDefinition defines a linear programming expression with its own Vars, Constraints, Objectives
 type lpDefinition struct {
 	Vars        []float64
 	Constraints [][2]float64
 	Objectives  [][]float64
 }
 
+// NewQuorumSystem defines a new quorum system given the reads Expr and the writes Expr
 func NewQuorumSystem(reads Expr, writes Expr) (QuorumSystem, error) {
 	optionalWrites := reads.Dual()
 
@@ -60,8 +65,8 @@ func NewQuorumSystem(reads Expr, writes Expr) (QuorumSystem, error) {
 			return QuorumSystem{}, fmt.Errorf("not all read quorums intersect all write quorums")
 		}
 	}
-	qs := QuorumSystem{reads: reads, writes: writes}
 
+	qs := QuorumSystem{reads: reads, writes: writes}
 	qs.nameToNode = nameToNode{}
 
 	for node := range qs.GetNodes() {
@@ -71,6 +76,7 @@ func NewQuorumSystem(reads Expr, writes Expr) (QuorumSystem, error) {
 	return qs, nil
 }
 
+// NewQuorumSystemWithReads defines a new quorum system given a read Expr, the write Expr is derived using Dual operation.
 func NewQuorumSystemWithReads(reads Expr) QuorumSystem {
 	qs, _ := NewQuorumSystem(reads, reads.Dual())
 
@@ -83,6 +89,7 @@ func NewQuorumSystemWithReads(reads Expr) QuorumSystem {
 	return qs
 }
 
+// NewQuorumSystemWithWrites defines a new quorum system given a write Expr, the read Expr is derived using Dual operation.
 func NewQuorumSystemWithWrites(writes Expr) QuorumSystem {
 	qs := QuorumSystem{reads: writes.Dual(), writes: writes}
 
@@ -96,24 +103,10 @@ func NewQuorumSystemWithWrites(writes Expr) QuorumSystem {
 }
 
 func (qs QuorumSystem) String() string {
-	return "TODO"
+	return fmt.Sprintf("QuorumSystem(%s, %s)", qs.reads.String(), qs.writes.String())
 }
 
-func initStrategyOptions(initOptions StrategyOptions) func(options *StrategyOptions) error {
-	init := func(options *StrategyOptions) error {
-		options.Optimize = initOptions.Optimize
-		options.LatencyLimit = initOptions.LatencyLimit
-		options.NetworkLimit = initOptions.NetworkLimit
-		options.LoadLimit = initOptions.LoadLimit
-		options.F = initOptions.F
-		options.ReadFraction = initOptions.ReadFraction
-		options.WriteFraction = initOptions.WriteFraction
-
-		return nil
-	}
-	return init
-}
-
+// Capacity caluclate and gets the capacity from the optimizied Strategy.
 func (qs QuorumSystem) Capacity(strategyOptions StrategyOptions) (*float64, error) {
 
 	strategy, err := qs.Strategy(initStrategyOptions(strategyOptions))
@@ -125,6 +118,7 @@ func (qs QuorumSystem) Capacity(strategyOptions StrategyOptions) (*float64, erro
 	return strategy.Capacity(&strategyOptions.ReadFraction, &strategyOptions.WriteFraction)
 }
 
+// Latency calculate and gets the latency from the optimized Strategy.
 func (qs QuorumSystem) Latency(strategyOptions StrategyOptions) (*float64, error) {
 
 	strategy, err := qs.Strategy(initStrategyOptions(strategyOptions))
@@ -136,6 +130,7 @@ func (qs QuorumSystem) Latency(strategyOptions StrategyOptions) (*float64, error
 	return strategy.Latency(&strategyOptions.ReadFraction, &strategyOptions.WriteFraction)
 }
 
+// Load calculate and gets the Load from the optimized Strategy.
 func (qs QuorumSystem) Load(strategyOptions StrategyOptions) (*float64, error) {
 
 	strategy, err := qs.Strategy(initStrategyOptions(strategyOptions))
@@ -147,6 +142,7 @@ func (qs QuorumSystem) Load(strategyOptions StrategyOptions) (*float64, error) {
 	return strategy.Load(&strategyOptions.ReadFraction, &strategyOptions.WriteFraction)
 }
 
+// NetworkLoad calculate and gets the NetworkLoad from the optimized Strategy.
 func (qs QuorumSystem) NetworkLoad(strategyOptions StrategyOptions) (*float64, error) {
 
 	strategy, err := qs.Strategy(initStrategyOptions(strategyOptions))
@@ -157,14 +153,18 @@ func (qs QuorumSystem) NetworkLoad(strategyOptions StrategyOptions) (*float64, e
 
 	return strategy.NetworkLoad(&strategyOptions.ReadFraction, &strategyOptions.WriteFraction)
 }
+
+//ReadQuorums gets the read quorums.
 func (qs QuorumSystem) ReadQuorums() chan ExprSet {
 	return qs.reads.Quorums()
 }
 
+//WriteQuorums gets the write quorums.
 func (qs QuorumSystem) WriteQuorums() chan ExprSet {
 	return qs.writes.Quorums()
 }
 
+// ListReadQuorums fetches the read quorums and returns as an []ExprSet.
 func (qs QuorumSystem) ListReadQuorums() []ExprSet {
 	rq := make([]ExprSet, 0)
 
@@ -175,6 +175,7 @@ func (qs QuorumSystem) ListReadQuorums() []ExprSet {
 	return rq
 }
 
+// ListWriteQuorums fetches the write quorums and returns as an []ExprSet.
 func (qs QuorumSystem) ListWriteQuorums() []ExprSet {
 	wq := make([]ExprSet, 0)
 
@@ -185,18 +186,22 @@ func (qs QuorumSystem) ListWriteQuorums() []ExprSet {
 	return wq
 }
 
+// IsReadQuorum check if a set of expression is a read quorum.
 func (qs QuorumSystem) IsReadQuorum(xs ExprSet) bool {
 	return qs.reads.IsQuorum(xs)
 }
 
+// IsWriteQuorum check if a set of expression is a write quorum.
 func (qs QuorumSystem) IsWriteQuorum(xs ExprSet) bool {
 	return qs.writes.IsQuorum(xs)
 }
 
-func (qs QuorumSystem) Node(x string) Node {
-	return qs.nameToNode[x]
+// GetNodeByName returns a node by its name.
+func (qs QuorumSystem) GetNodeByName(name string) Node {
+	return qs.nameToNode[name]
 }
 
+//GetNodes returns a set of nodes.
 func (qs QuorumSystem) GetNodes() NodeSet {
 	r := make(NodeSet, 0)
 
@@ -211,7 +216,8 @@ func (qs QuorumSystem) GetNodes() NodeSet {
 	return r
 }
 
-func (qs QuorumSystem) Elements() []Node {
+// GetNodesAsArray returns an array of Node.
+func (qs QuorumSystem) GetNodesAsArray() []Node {
 	nodes := make([]Node, 0)
 	for n := range qs.GetNodes() {
 		nodes = append(nodes, n)
@@ -219,29 +225,34 @@ func (qs QuorumSystem) Elements() []Node {
 	return nodes
 }
 
+// Resilience returns the total resilience of the quorum system - min(readResilience, writeResilience)
 func (qs QuorumSystem) Resilience() uint {
-	rr := qs.ReadResilience()
-	wr := qs.WriteResilience()
+	rres := qs.ReadResilience()
+	wres := qs.WriteResilience()
 
-	if rr < wr {
-		return rr
+	if rres < wres {
+		return rres
 	}
 
-	return wr
+	return wres
 }
 
+// ReadResilience returns the read resilience.
 func (qs QuorumSystem) ReadResilience() uint {
 	return qs.reads.Resilience()
 }
 
+// WriteResilience returns the write resilience.
 func (qs QuorumSystem) WriteResilience() uint {
 	return qs.writes.Resilience()
 }
 
+// DupFree returns true if the quorum system is duplicate free, otherwise false.
 func (qs QuorumSystem) DupFree() bool {
 	return qs.reads.DupFree() && qs.writes.DupFree()
 }
 
+// Strategy returns the optimal Strategy for the given quorum system.
 func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*Strategy, error) {
 
 	sb := &StrategyOptions{}
@@ -272,7 +283,7 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 	rq := qs.ListReadQuorums()
 	wq := qs.ListWriteQuorums()
 
-	d, err := canonicalizeRW(&sb.ReadFraction, &sb.WriteFraction)
+	d, err := canonicalizeReadsWrites(&sb.ReadFraction, &sb.WriteFraction)
 
 	if err != nil {
 		return nil, err
@@ -284,7 +295,7 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 			sb.LoadLimit, sb.NetworkLimit, sb.LatencyLimit)
 	}
 
-	xs := qs.Elements()
+	xs := qs.GetNodesAsArray()
 
 	rq = make([]ExprSet, 0)
 	wq = make([]ExprSet, 0)
@@ -305,6 +316,7 @@ func (qs QuorumSystem) Strategy(opts ...func(options *StrategyOptions) error) (*
 		sb.LoadLimit, sb.NetworkLimit, sb.LatencyLimit)
 }
 
+// UniformStrategy returns the standard majority quorum strategy for the quorum system.
 func (qs QuorumSystem) UniformStrategy(f int) (Strategy, error) {
 	readQuorums := make([]ExprSet, 0)
 	writeQuorums := make([]ExprSet, 0)
@@ -333,6 +345,7 @@ func (qs QuorumSystem) UniformStrategy(f int) (Strategy, error) {
 	return NewStrategy(qs, Sigma{sigmaR}, Sigma{sigmaW}), nil
 }
 
+// MakeStrategy returns a strategy given the read and write sigma.
 func (qs QuorumSystem) MakeStrategy(sigmaR Sigma, sigmaW Sigma) (Strategy, error) {
 	normalizedSigmaR := make([]SigmaRecord, 0)
 	normalizedSigmaW := make([]SigmaRecord, 0)
@@ -437,6 +450,21 @@ func (qs QuorumSystem) fResilientQuorums(f int, xs []Node, e Expr) []ExprSet {
 	s := ExprSet{}
 	result := make([]ExprSet, 0)
 	return fResilientHelper(result, f, xs, e, s, 0)
+}
+
+func initStrategyOptions(initOptions StrategyOptions) func(options *StrategyOptions) error {
+	init := func(options *StrategyOptions) error {
+		options.Optimize = initOptions.Optimize
+		options.LatencyLimit = initOptions.LatencyLimit
+		options.NetworkLimit = initOptions.NetworkLimit
+		options.LoadLimit = initOptions.LoadLimit
+		options.F = initOptions.F
+		options.ReadFraction = initOptions.ReadFraction
+		options.WriteFraction = initOptions.WriteFraction
+
+		return nil
+	}
+	return init
 }
 
 func fResilientHelper(result []ExprSet, f int, xs []Node, e Quorum, s ExprSet, i int) []ExprSet {
@@ -621,7 +649,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 			quorum := make([]Node, 0)
 
 			for x := range v.Quorum {
-				q := qs.Node(x.String())
+				q := qs.GetNodeByName(x.String())
 				quorum = append(quorum, q)
 			}
 
@@ -638,7 +666,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 			quorum := make([]Node, 0)
 
 			for x := range v.Quorum {
-				q := qs.Node(x.String())
+				q := qs.GetNodeByName(x.String())
 				quorum = append(quorum, q)
 			}
 
@@ -696,14 +724,14 @@ func (qs QuorumSystem) loadOptimalStrategy(
 			if _, ok := xToReadQuorumVars[n]; ok {
 				vs := xToReadQuorumVars[n]
 				for _, v := range vs {
-					tmp[v.Index] += fr * v.Value / float64(*qs.Node(n.Name).ReadCapacity)
+					tmp[v.Index] += fr * v.Value / float64(*qs.GetNodeByName(n.Name).ReadCapacity)
 				}
 			}
 
 			if _, ok := xToWriteQuorumVars[n]; ok {
 				vs := xToWriteQuorumVars[n]
 				for _, v := range vs {
-					tmp[v.Index] += (1 - fr) * v.Value / float64(*qs.Node(n.Name).WriteCapacity)
+					tmp[v.Index] += (1 - fr) * v.Value / float64(*qs.GetNodeByName(n.Name).WriteCapacity)
 				}
 			}
 
@@ -749,12 +777,12 @@ func (qs QuorumSystem) loadOptimalStrategy(
 
 	if networkLimit != nil {
 		defTemp := network(networkLimit)
-		def.Objectives = appendObj(def.Objectives, defTemp.Objectives)
+		def.Objectives = merge(def.Objectives, defTemp.Objectives)
 	}
 
 	if latencyLimit != nil {
 		defTemp, _ := latency(latencyLimit)
-		def.Objectives = appendObj(def.Objectives, defTemp.Objectives)
+		def.Objectives = merge(def.Objectives, defTemp.Objectives)
 	}
 
 	simp.EasyLoadDenseProblem(def.Vars, def.Constraints, def.Objectives)
@@ -786,7 +814,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	return &newStrategy, nil
 }
 
-func appendObj(obj [][]float64, lobj [][]float64) [][]float64 {
+func merge(obj [][]float64, lobj [][]float64) [][]float64 {
 
 	if len(obj[0]) != len(lobj[0]) {
 		lobj[0] = insertAt(lobj[0], len(lobj[0])-1, 0)
@@ -909,299 +937,4 @@ func insertAt(a []float64, index int, value float64) []float64 {
 	a = append(a[:index+1], a[index:]...) // index < len(a)
 	a[index] = value
 	return a
-}
-
-//Strategy
-type Strategy struct {
-	Qs                QuorumSystem
-	SigmaR            Sigma
-	SigmaW            Sigma
-	XReadProbability  map[Node]float64
-	XWriteProbability map[Node]float64
-}
-
-type SigmaRecord struct {
-	Quorum      ExprSet
-	Probability Probability
-}
-type Sigma struct {
-	Values []SigmaRecord
-}
-
-func NewStrategy(quorumSystem QuorumSystem, sigmaR Sigma, sigmaW Sigma) Strategy {
-	newStrategy := Strategy{SigmaR: sigmaR, SigmaW: sigmaW, Qs: quorumSystem}
-
-	xReadProbability := make(map[Node]float64)
-	for _, sr := range sigmaR.Values {
-		for q := range sr.Quorum {
-			xReadProbability[q.(Node)] += sr.Probability
-		}
-
-	}
-
-	xWriteProbability := make(map[Node]float64)
-	for _, sr := range sigmaW.Values {
-		for q := range sr.Quorum {
-			xWriteProbability[q.(Node)] += sr.Probability
-		}
-	}
-
-	newStrategy.XWriteProbability = xWriteProbability
-	newStrategy.XReadProbability = xReadProbability
-
-	return newStrategy
-}
-
-func (s Strategy) String() string {
-	return "TODO"
-}
-
-func (s Strategy) GetReadQuorum() ExprSet {
-
-	rand.Seed(time.Now().UTC().UnixNano()) // always seed random!
-
-	criteria := make([]wr.Choice, 0)
-
-	weightSum := 0.0
-	for _, w := range s.SigmaR.Values {
-		weightSum += w.Probability
-	}
-
-	for _, sigmaRecord := range s.SigmaR.Values {
-		criteria = append(criteria, wr.Choice{Item: sigmaRecord.Quorum, Weight: uint(sigmaRecord.Probability * 10)})
-	}
-
-	chooser, _ := wr.NewChooser(criteria...)
-	result := chooser.Pick().(ExprSet)
-
-	return result
-}
-
-func (s Strategy) GetWriteQuorum() ExprSet {
-
-	rand.Seed(time.Now().UTC().UnixNano()) // always seed random!
-
-	criteria := make([]wr.Choice, 0)
-
-	weightSum := 0.0
-	for _, w := range s.SigmaW.Values {
-		weightSum += w.Probability
-	}
-
-	for _, sigmaRecord := range s.SigmaW.Values {
-		criteria = append(criteria, wr.Choice{Item: sigmaRecord.Quorum, Weight: uint(sigmaRecord.Probability * 10)})
-	}
-
-	chooser, _ := wr.NewChooser(criteria...)
-	result := chooser.Pick().(ExprSet)
-
-	return result
-}
-
-func (s Strategy) Load(rf *Distribution, wf *Distribution) (*float64, error) {
-	d, err := canonicalizeRW(rf, wf)
-	if err != nil {
-		return nil, err
-	}
-
-	sum := 0.0
-
-	for fr, p := range d {
-		sum += p * s.maxLoad(fr)
-	}
-	return &sum, nil
-}
-
-func (s Strategy) Capacity(rf *Distribution, wf *Distribution) (*float64, error) {
-	d, err := canonicalizeRW(rf, wf)
-	if err != nil {
-		return nil, err
-	}
-
-	sum := 0.0
-
-	for fr, p := range d {
-		sum += p * 1.0 / s.maxLoad(fr)
-	}
-	return &sum, nil
-}
-
-func (s Strategy) NetworkLoad(rf *Distribution, wf *Distribution) (*float64, error) {
-	d, err := canonicalizeRW(rf, wf)
-	if err != nil {
-		return nil, err
-	}
-
-	frsum := 0.0
-
-	for fr, p := range d {
-		frsum += p * fr
-	}
-
-	reads := 0.0
-	for _, sigma := range s.SigmaR.Values {
-		reads += frsum * float64(len(sigma.Quorum)) * sigma.Probability
-	}
-
-	writes := 0.0
-	for _, sigma := range s.SigmaW.Values {
-		writes += (1 - frsum) * float64(len(sigma.Quorum)) * sigma.Probability
-	}
-
-	total := reads + writes
-	return &total, nil
-}
-
-func (s Strategy) Latency(rf *Distribution, wf *Distribution) (*float64, error) {
-	d, err := canonicalizeRW(rf, wf)
-	if err != nil {
-		return nil, err
-	}
-
-	frsum := 0.0
-
-	for fr, p := range d {
-		frsum += p * fr
-	}
-
-	reads := 0.0
-
-	for _, rq := range s.SigmaR.Values {
-		nodes := make([]Node, 0)
-
-		for n := range rq.Quorum {
-			nodes = append(nodes, s.Qs.Node(n.String()))
-		}
-
-		v, err := s.Qs.readQuorumLatency(nodes)
-
-		if err != nil {
-			return nil, err
-		}
-
-		reads += float64(*v) * rq.Probability
-	}
-
-	writes := 0.0
-
-	for _, wq := range s.SigmaW.Values {
-		nodes := make([]Node, 0)
-
-		for n := range wq.Quorum {
-			nodes = append(nodes, s.Qs.Node(n.String()))
-		}
-
-		v, err := s.Qs.writeQuorumLatency(nodes)
-
-		if err != nil {
-			return nil, err
-		}
-		writes += float64(*v) * wq.Probability
-	}
-
-	total := frsum*reads + (1-frsum)*writes
-	return &total, nil
-}
-
-func (s Strategy) NodeLoad(node Node, rf *Distribution, wf *Distribution) (*float64, error) {
-	d, err := canonicalizeRW(rf, wf)
-	if err != nil {
-		return nil, err
-	}
-
-	sum := 0.0
-
-	for fr, p := range d {
-		sum += p * s.nodeLoad(node, fr)
-	}
-	return &sum, nil
-}
-
-func (s Strategy) NodeUtilization(node Node, rf *Distribution, wf *Distribution) (*float64, error) {
-	d, err := canonicalizeRW(rf, wf)
-	if err != nil {
-		return nil, err
-	}
-
-	sum := 0.0
-
-	for fr, p := range d {
-		sum += p * s.nodeUtilization(node, fr)
-	}
-	return &sum, nil
-}
-
-func (s Strategy) NodeThroughput(node Node, rf *Distribution, wf *Distribution) (*float64, error) {
-	d, err := canonicalizeRW(rf, wf)
-	if err != nil {
-		return nil, err
-	}
-
-	sum := 0.0
-
-	for fr, p := range d {
-		sum += p * s.nodeThroughput(node, fr)
-	}
-	return &sum, nil
-}
-
-func (s Strategy) maxLoad(fr float64) float64 {
-	max := 0.0
-
-	for n := range s.Qs.GetNodes() {
-		if s.nodeLoad(n, fr) > max {
-			max = s.nodeLoad(n, fr)
-		}
-	}
-
-	return max
-}
-
-func (s Strategy) nodeLoad(node Node, fr float64) float64 {
-	fw := 1 - fr
-	return fr*s.XReadProbability[node]/float64(*node.ReadCapacity) +
-		fw*s.XWriteProbability[node]/float64(*node.WriteCapacity)
-}
-
-func (s Strategy) nodeUtilization(node Node, fr float64) float64 {
-	return s.nodeLoad(node, fr) / s.maxLoad(fr)
-}
-
-func (s Strategy) nodeThroughput(node Node, fr float64) float64 {
-	capacity := 1 / s.maxLoad(fr)
-	fw := 1 - fr
-
-	return capacity * (fr*s.XReadProbability[node] + fw*s.XWriteProbability[node])
-}
-
-// Sorter
-type nodeSorter struct {
-	nodes []Node
-	by    func(p1, p2 *Node) bool // Closure used in the Less method.
-}
-
-// Len is part of sort.Interface.
-func (ns *nodeSorter) Len() int {
-	return len(ns.nodes)
-}
-
-// Swap is part of sort.Interface.
-func (ns *nodeSorter) Swap(i, j int) {
-	ns.nodes[i], ns.nodes[j] = ns.nodes[j], ns.nodes[i]
-}
-
-// Less is part of sort.Interface. It is implemented by calling the "by" closure in the sorter.
-func (ns *nodeSorter) Less(i, j int) bool {
-	return ns.by(&ns.nodes[i], &ns.nodes[j])
-}
-
-type By func(p1, p2 *Node) bool
-
-// Sort is a method on the function type, By, that sorts the argument slice according to the function.
-func (by By) Sort(nodes []Node) {
-	ps := &nodeSorter{
-		nodes: nodes,
-		by:    by, // The Sort method's receiver is the function (closure) that defines the sort order.
-	}
-	sort.Sort(ps)
 }
