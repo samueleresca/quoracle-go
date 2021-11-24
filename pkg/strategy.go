@@ -30,7 +30,7 @@ type StrategyOptions struct {
 type Strategy struct {
 	Qs                QuorumSystem
 	SigmaR            Sigma
-	SigmaW                Sigma
+	SigmaW            Sigma
 	nodeToReadProbability  map[Node]Probability
 	nodeToWriteProbability map[Node]Probability
 }
@@ -71,9 +71,6 @@ func NewStrategy(quorumSystem QuorumSystem, sigmaR Sigma, sigmaW Sigma) Strategy
 	return newStrategy
 }
 
-func (s Strategy) String() string {
-	return "TODO"
-}
 // GetReadQuorum returns a ExprSet representing a quorum of the strategy.
 // The method return the quorum based on its probability.
 func (s Strategy) GetReadQuorum() ExprSet {
@@ -96,6 +93,7 @@ func (s Strategy) GetReadQuorum() ExprSet {
 
 	return result
 }
+
 // GetWriteQuorum returns a ExprSet representing a quorum of the strategy.
 // The method return the quorum based on its probability.
 func (s Strategy) GetWriteQuorum() ExprSet {
@@ -120,10 +118,10 @@ func (s Strategy) GetWriteQuorum() ExprSet {
 }
 
 // Load calculates and returns the load of the strategy given a read and write distribution.
-func (s Strategy) Load(rf *Distribution, wf *Distribution) (*float64, error) {
+func (s Strategy) Load(rf *Distribution, wf *Distribution) (float64, error) {
 	d, err := canonicalizeReadsWrites(rf, wf)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	sum := 0.0
@@ -131,14 +129,14 @@ func (s Strategy) Load(rf *Distribution, wf *Distribution) (*float64, error) {
 	for fr, p := range d {
 		sum += p * s.getMaxLoad(fr)
 	}
-	return &sum, nil
+	return sum, nil
 }
 
 // Capacity calculates and returns the capacity of the strategy given a read and write distribution.
-func (s Strategy) Capacity(rf *Distribution, wf *Distribution) (*float64, error) {
+func (s Strategy) Capacity(rf *Distribution, wf *Distribution) (float64, error) {
 	d, err := canonicalizeReadsWrites(rf, wf)
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
 
 	sum := 0.0
@@ -146,14 +144,14 @@ func (s Strategy) Capacity(rf *Distribution, wf *Distribution) (*float64, error)
 	for fr, p := range d {
 		sum += p * 1.0 / s.getMaxLoad(fr)
 	}
-	return &sum, nil
+	return sum, nil
 }
 
 // NetworkLoad calculates and returns the network load of the strategy given a read and write Distribution.
-func (s Strategy) NetworkLoad(rf *Distribution, wf *Distribution) (*float64, error) {
+func (s Strategy) NetworkLoad(rf *Distribution, wf *Distribution) (float64, error) {
 	d, err := canonicalizeReadsWrites(rf, wf)
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
 
 	frsum := 0.0
@@ -173,14 +171,14 @@ func (s Strategy) NetworkLoad(rf *Distribution, wf *Distribution) (*float64, err
 	}
 
 	total := reads + writes
-	return &total, nil
+	return total, nil
 }
 
 // Latency calculates and returns the latency of the strategy given a read and write Distribution.
-func (s Strategy) Latency(rf *Distribution, wf *Distribution) (*float64, error) {
+func (s Strategy) Latency(rf *Distribution, wf *Distribution) (float64, error) {
 	d, err := canonicalizeReadsWrites(rf, wf)
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
 
 	frsum := 0.0
@@ -201,7 +199,7 @@ func (s Strategy) Latency(rf *Distribution, wf *Distribution) (*float64, error) 
 		v, err := s.Qs.readQuorumLatency(nodes)
 
 		if err != nil {
-			return nil, err
+			return -1, err
 		}
 
 		reads += float64(*v) * rq.Probability
@@ -219,20 +217,20 @@ func (s Strategy) Latency(rf *Distribution, wf *Distribution) (*float64, error) 
 		v, err := s.Qs.writeQuorumLatency(nodes)
 
 		if err != nil {
-			return nil, err
+			return -1, err
 		}
 		writes += float64(*v) * wq.Probability
 	}
 
 	total := frsum*reads + (1-frsum)*writes
-	return &total, nil
+	return total, nil
 }
 
 // NodeLoad returns the load of a specific Node given a read and write Distribution.
-func (s Strategy) NodeLoad(node Node, rf *Distribution, wf *Distribution) (*float64, error) {
+func (s Strategy) NodeLoad(node Node, rf *Distribution, wf *Distribution) (float64, error) {
 	d, err := canonicalizeReadsWrites(rf, wf)
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
 
 	sum := 0.0
@@ -240,7 +238,7 @@ func (s Strategy) NodeLoad(node Node, rf *Distribution, wf *Distribution) (*floa
 	for fr, p := range d {
 		sum += p * s.getNodeLoad(node, fr)
 	}
-	return &sum, nil
+	return sum, nil
 }
 
 // NodeUtilization returns the utilization of a specific Node given a read and write Distribution.
@@ -273,6 +271,10 @@ func (s Strategy) NodeThroughput(node Node, rf *Distribution, wf *Distribution) 
 	return &sum, nil
 }
 
+func (s Strategy) String() string {
+	return "TODO"
+}
+
 // getMaxLoad returns the max load of the strategy for a specific fraction.
 func (s Strategy) getMaxLoad(fr float64) float64 {
 	max := 0.0
@@ -285,6 +287,7 @@ func (s Strategy) getMaxLoad(fr float64) float64 {
 
 	return max
 }
+
 // getNodeLoad returns the load of a node for a given probability.
 func (s Strategy) getNodeLoad(node Node, fr float64) float64 {
 	fw := 1 - fr

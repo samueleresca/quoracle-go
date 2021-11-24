@@ -57,7 +57,7 @@ func TestNetworkLoad(t *testing.T) {
 	wf = nil
 	result, _ := sigma.NetworkLoad(&rf, &wf)
 
-	assert.Equal(t, *result, 0.8*0.75*2+0.8*0.25*3+0.2*2, fmt.Sprintf("Result: %d", result))
+	assert.Equal(t, result, 0.8*0.75*2+0.8*0.25*3+0.2*2, fmt.Sprintf("Result: %f", result))
 }
 
 func TestLatency(t *testing.T) {
@@ -87,7 +87,7 @@ func TestLatency(t *testing.T) {
 	wf = nil
 	result, _ := sigma.Latency(&rf, &wf)
 
-	assert.Assert(t, math.Abs(*result-(0.8*0.10*2+
+	assert.Assert(t, math.Abs(result-(0.8*0.10*2+
 		0.8*0.20*2+
 		0.8*0.30*5+
 		0.8*0.40*5+
@@ -96,7 +96,7 @@ func TestLatency(t *testing.T) {
 		0.2*0.15*5+
 		0.2*0.20*3+
 		0.2*0.25*4+
-		0.2*0.25*5)) <= float64EqualityThreshold, fmt.Sprintf("Result: %d", result))
+		0.2*0.25*5)) <= float64EqualityThreshold, fmt.Sprintf("Result: %f", result))
 }
 
 func TestLoadCapUtil(t *testing.T) {
@@ -148,14 +148,14 @@ func TestLoadCapUtil(t *testing.T) {
 	load, _ := sigma.Load(&rf, &wf)
 	capacity, _ := sigma.Capacity(&rf, &wf)
 
-	assert.Assert(t, math.Abs(*load-load08) <= float64EqualityThreshold)
-	assert.Assert(t, math.Abs(*capacity-cap08) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(load-load08) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(capacity-cap08) <= float64EqualityThreshold)
 
 	for n, l := range nodeLoads08 {
 		utilization, _ := sigma.NodeUtilization(n, &rf, &wf)
 		loadN, _ := sigma.NodeLoad(n, &rf, &wf)
 
-		assert.Assert(t, math.Abs(*loadN-l) <= float64EqualityThreshold)
+		assert.Assert(t, math.Abs(loadN-l) <= float64EqualityThreshold)
 		assert.Assert(t, math.Abs(*utilization-(l*cap08)) <= float64EqualityThreshold)
 	}
 
@@ -195,14 +195,14 @@ func TestLoadCapUtil(t *testing.T) {
 	load, _ = sigma.Load(&rf, &wf)
 	capacity, _ = sigma.Capacity(&rf, &wf)
 
-	assert.Assert(t, math.Abs(*load-load05) <= float64EqualityThreshold)
-	assert.Assert(t, math.Abs(*capacity-cap05) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(load-load05) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(capacity-cap05) <= float64EqualityThreshold)
 
 	for n, l := range nodeLoads05 {
 		utilization, _ := sigma.NodeUtilization(n, &rf, &wf)
 		loadN, _ := sigma.NodeLoad(n, &rf, &wf)
 
-		assert.Assert(t, math.Abs(*loadN-l) <= float64EqualityThreshold)
+		assert.Assert(t, math.Abs(loadN-l) <= float64EqualityThreshold)
 		assert.Assert(t, math.Abs(*utilization-(l*cap05)) <= float64EqualityThreshold)
 	}
 
@@ -232,8 +232,8 @@ func TestLoadCapUtil(t *testing.T) {
 	load, _ = sigma.Load(&rf, &wf)
 	capacity, _ = sigma.Capacity(&rf, &wf)
 
-	assert.Assert(t, math.Abs(*load-loadTotal) <= float64EqualityThreshold)
-	assert.Assert(t, math.Abs(*capacity-capTotal) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(load-loadTotal) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(capacity-capTotal) <= float64EqualityThreshold)
 
 	nodeThroughputs := map[Node]float64{
 		a: cap08*0.7*(0.8*0.75+0.2*(0.1+0.2)) +
@@ -251,7 +251,7 @@ func TestLoadCapUtil(t *testing.T) {
 		nodeLoad, _ := sigma.NodeLoad(n, &rf, &wf)
 		nodeUtil, _ := sigma.NodeUtilization(n, &rf, &wf)
 
-		assert.Assert(t, math.Abs(*nodeLoad-l) <= float64EqualityThreshold)
+		assert.Assert(t, math.Abs(nodeLoad-l) <= float64EqualityThreshold)
 		assert.Assert(t, math.Abs(*nodeUtil-(0.3*nodeLoads05[n]*cap05+0.7*cap08*nodeLoads08[n])) <= float64EqualityThreshold)
 	}
 

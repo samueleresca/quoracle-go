@@ -41,7 +41,7 @@ func main() {
 
 	load, _ := qs.Load(strategyOptions)
 
-	fmt.Println(*load)
+	fmt.Println(load)
 }
 ```
 

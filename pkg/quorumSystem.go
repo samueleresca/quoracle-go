@@ -7,18 +7,10 @@ import (
 	"sort"
 )
 
+
+
 // nameToNode keeps track of the name to node mapping ( "a"-> Node("a")).
 type nameToNode = map[string]Node
-
-// QuorumSystem describes a read-write quorum system.
-type QuorumSystem struct {
-	// reads describes the read-quorum.
-	reads   Expr
-	// writes describes the write-quorum.
-	writes     Expr
-	// nameToNode keeps track the name of a node to a GetNodeByName.
-	nameToNode nameToNode
-}
 
 //lpVariable describe a linear programming variable for the quorum system.
 type lpVariable struct {
@@ -37,7 +29,17 @@ type lpDefinition struct {
 	Objectives  [][]float64
 }
 
-// NewQuorumSystem defines a new quorum system given the reads Expr and the writes Expr
+// QuorumSystem describes a read-write quorum system.
+type QuorumSystem struct {
+	// reads describes the read-quorum.
+	reads   Expr
+	// writes describes the write-quorum.
+	writes     Expr
+	// nameToNode keeps track the name of a node to a GetNodeByName.
+	nameToNode nameToNode
+}
+
+// NewQuorumSystem defines a new quorum system given the reads Expr and the writes Expr.
 func NewQuorumSystem(reads Expr, writes Expr) (QuorumSystem, error) {
 	optionalWrites := reads.Dual()
 
@@ -83,53 +85,49 @@ func NewQuorumSystemWithWrites(writes Expr) QuorumSystem {
 	return qs
 }
 
-func (qs QuorumSystem) String() string {
-	return fmt.Sprintf("QuorumSystem(%s, %s)", qs.reads.String(), qs.writes.String())
-}
-
-// Capacity caluclate and gets the capacity from the optimizied Strategy.
-func (qs QuorumSystem) Capacity(strategyOptions StrategyOptions) (*float64, error) {
+// Capacity calculate and gets the capacity from the optimized Strategy.
+func (qs QuorumSystem) Capacity(strategyOptions StrategyOptions) (float64, error) {
 
 	strategy, err := qs.Strategy(initStrategyOptions(strategyOptions))
 
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
 
 	return strategy.Capacity(&strategyOptions.ReadFraction, &strategyOptions.WriteFraction)
 }
 
 // Latency calculate and gets the latency from the optimized Strategy.
-func (qs QuorumSystem) Latency(strategyOptions StrategyOptions) (*float64, error) {
+func (qs QuorumSystem) Latency(strategyOptions StrategyOptions) (float64, error) {
 
 	strategy, err := qs.Strategy(initStrategyOptions(strategyOptions))
 
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
 
 	return strategy.Latency(&strategyOptions.ReadFraction, &strategyOptions.WriteFraction)
 }
 
 // Load calculate and gets the Load from the optimized Strategy.
-func (qs QuorumSystem) Load(strategyOptions StrategyOptions) (*float64, error) {
+func (qs QuorumSystem) Load(strategyOptions StrategyOptions) (float64, error) {
 
 	strategy, err := qs.Strategy(initStrategyOptions(strategyOptions))
 
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
 
 	return strategy.Load(&strategyOptions.ReadFraction, &strategyOptions.WriteFraction)
 }
 
 // NetworkLoad calculate and gets the NetworkLoad from the optimized Strategy.
-func (qs QuorumSystem) NetworkLoad(strategyOptions StrategyOptions) (*float64, error) {
+func (qs QuorumSystem) NetworkLoad(strategyOptions StrategyOptions) (float64, error) {
 
 	strategy, err := qs.Strategy(initStrategyOptions(strategyOptions))
 
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
 
 	return strategy.NetworkLoad(&strategyOptions.ReadFraction, &strategyOptions.WriteFraction)
@@ -467,10 +465,12 @@ func getResilientQuorumsHelper(exprSets []ExprSet, minResilience int, n []Node, 
 func (qs QuorumSystem) readQuorumLatency(quorum []Node) (*uint, error) {
 	return qs.quorumLatency(quorum, qs.IsReadQuorum)
 }
+
 // writeQuorumLatency returns the latency of a write quorum.
 func (qs QuorumSystem) writeQuorumLatency(quorum []Node) (*uint, error) {
 	return qs.quorumLatency(quorum, qs.IsWriteQuorum)
 }
+
 // quorumLatency returns the minimum latency of a given quorum.
 func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(set ExprSet) bool) (*uint, error) {
 	sortedQ := make([]Node, 0)
@@ -500,7 +500,6 @@ func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(set ExprSet) b
 	return nil, fmt.Errorf("_quorum_latency called on a non-quorum")
 
 }
-
 
 func (qs QuorumSystem) loadOptimalStrategy(
 	optimize OptimizeType,
@@ -891,6 +890,7 @@ func merge(obj [][]float64, lobj [][]float64) [][]float64 {
 
 	return obj
 }
+
 func remove(set ExprSet, g ...Expr) ExprSet {
 	newSet := copySet(set)
 
