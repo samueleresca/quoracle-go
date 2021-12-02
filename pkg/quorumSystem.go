@@ -15,14 +15,48 @@ type nameToNode = map[string]Node
 //lpVariable describe a linear programming variable for the quorum system.
 type lpVariable struct {
 	Name   string
+	Index  int
 	Value  float64
 	UBound float64
 	LBound float64
-	Index  int
 	Quorum ExprSet
 }
 
-// lpDefinition defines a linear programming expression with its own Vars, Constraints, Objectives
+// lpDefinition defines a linear programming expression with its own Vars, Constraints, Objectives.
+//
+// e.g:
+// Let's suppose that we have 3 six-faced dices. Two dice are allowed have the same value.
+// The objective is to find the difference in value between the 1st and 2nd-largest dice must be smaller
+// than the difference in value between the 2nd and 3rd dice.
+//
+// This problem can be represented with the math equations:
+//
+//	Vars: diceA, diceB, diceC
+//  Constraints:
+// 		1 ≤ diceA ≤ 6
+//		1 ≤ diceB ≤ 6
+//		1 ≤ diceC ≤ 6
+//		1 ≤ diceA - diceB ≤ ∞ | The two dices cannot be the same.
+//		1 ≤ diceB - diceC ≤ ∞ | The two dices cannot be the same.
+//  Obj:
+//		a − b < b − c -> -∞ ≤ a - 2b + c ≤ -1 | The main objective codified from the problem.
+//
+// The problem can also be represented using an lpDefinition as follows:
+// lpDefinition {
+// 	Vars: [1.0, 1.0, 1.0] // diceA, diceB, diceC
+//  Constraints: [
+//					[1, 6]
+//					[1, 6]
+//					[1, 6]
+// 				 ],
+//	Obj: [
+//				   LB  A    B    C    UB
+//               {1.0, 1.0, -1.0, 0.0, pinf},  // 1 ≤ a - b ≤ ∞
+//               {1.0, 0.0, 1.0, -1.0, pinf},  // 1 ≤ b - c ≤ ∞
+//               {ninf, 1.0, -2.0, 1.0, -1.0}, // -∞ ≤ a - 2b + c ≤ -1
+// 		 ]
+// }
+
 type lpDefinition struct {
 	Vars        []float64
 	Constraints [][2]float64
@@ -59,7 +93,7 @@ func NewQuorumSystem(reads Expr, writes Expr) (QuorumSystem, error) {
 	return qs, nil
 }
 
-// NewQuorumSystemWithReads defines a new quorum system given a read Expr, the write Expr is derived using Dual operation.
+// NewQuorumSystemWithReads defines a new quorum system given a read Expr, the write Expr is derived using DualOperator.Dual operation.
 func NewQuorumSystemWithReads(reads Expr) QuorumSystem {
 	qs, _ := NewQuorumSystem(reads, reads.Dual())
 
@@ -72,7 +106,7 @@ func NewQuorumSystemWithReads(reads Expr) QuorumSystem {
 	return qs
 }
 
-// NewQuorumSystemWithWrites defines a new quorum system given a write Expr, the read Expr is derived using Dual operation.
+// NewQuorumSystemWithWrites defines a new quorum system given a write Expr, the read Expr is derived using DualOperator.Dual operation.
 func NewQuorumSystemWithWrites(writes Expr) QuorumSystem {
 	qs := QuorumSystem{reads: writes.Dual(), writes: writes}
 
@@ -653,6 +687,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 			def.Constraints = append(def.Constraints, b)
 
 		}
+
 		// add constraints 0 <= q <= 1
 		for _, v := range writeQuorumVars {
 			def.Vars = append(def.Vars, 1.0)
@@ -662,11 +697,9 @@ func (qs QuorumSystem) loadOptimalStrategy(
 
 		// l def
 		def.Vars = append(def.Vars, 1.0)
-		b := [2]float64{ninf, pinf}
-		def.Constraints = append(def.Constraints, b)
+		def.Constraints = append(def.Constraints, [2]float64{ninf, pinf})
 
 		// Load formula
-
 		for n := range qs.GetNodes() {
 			tmp := make([]float64, len(def.Vars))
 

@@ -17,12 +17,20 @@ const (
 
 // StrategyOptions describes the quorum system strategy options.
 type StrategyOptions struct {
+	// Optimize defines the target optimization.
 	Optimize      OptimizeType
+	// LoadLimit defines the limit on the load limit.
 	LoadLimit     *float64
+	// NetworkLimit defines the limit on the network limit.
 	NetworkLimit  *float64
+	// LatencyLimit defines the limit on the latency.
 	LatencyLimit  *float64
+	// ReadFraction defines the workflow distribution for the read operations.
 	ReadFraction  Distribution
+	// WriteFraction defines the workflow distribution for the write operations.
 	WriteFraction Distribution
+	// F r ∈ R is F-resilient for some integer f if despite removing
+	// any f nodes from r, r is still a read quorum
 	F             int
 }
 
