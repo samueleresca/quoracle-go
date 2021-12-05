@@ -683,9 +683,10 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		def, _ = latency(nil)
 	}
 
-	readQConstraint, writeQConstraint := getBaseConstraints(optimize, readQuorumVars, writeQuorumVars)
-	def.Objectives = append(def.Objectives, readQConstraint)
-	def.Objectives = append(def.Objectives, writeQConstraint)
+	// The sum of the read and write quorums probabilities must be 1.
+	sumOfReadProbabilities, sumOfWriteProbabilities := getTotalProbabilityConstraints(optimize, readQuorumVars, writeQuorumVars)
+	def.Objectives = append(def.Objectives, sumOfReadProbabilities)
+	def.Objectives = append(def.Objectives, sumOfWriteProbabilities)
 
 	if loadLimit != nil {
 		defTemp := getLoadObjective(readFraction, loadLimit, frLoad)
@@ -764,8 +765,8 @@ func getOptimizationVars(quorums []ExprSet, name string, startIndex int) (quorum
 	return quorumVars, quorumToQuorumVar
 }
 
-// getBaseConstraints returns the list of lpVariable for the strategy optimization process.
-func getBaseConstraints(optimize OptimizeType, readQuorumVars []lpVariable, writeQuorumVars []lpVariable) (readQConstraint []float64, writeQConstraint []float64) {
+// getTotalProbabilityConstraints returns two objectives targeting the read and write quorums: The sum of the probabilities must be 1.
+func getTotalProbabilityConstraints(optimize OptimizeType, readQuorumVars []lpVariable, writeQuorumVars []lpVariable) (readQConstraint []float64, writeQConstraint []float64) {
 	// read quorum constraint
 	readQConstraint = make([]float64, 0)
 	readQConstraint = append(readQConstraint, 1)
