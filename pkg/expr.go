@@ -12,6 +12,7 @@ import (
 
 // ExprSet describes a set of Expr.
 type ExprSet = map[Expr]bool
+
 // NodeSet describes a set of Node.
 type NodeSet = map[Node]bool
 
@@ -30,11 +31,13 @@ type ExprGetter interface {
 	// GetExprs methods returns a []Expr representing the Expr.
 	GetExprs() []Expr
 }
+
 // NodeGetter wraps the method for getting the NodeSet from an Expr.
 type NodeGetter interface {
 	// GetNodes returns a NodeSet with the NodeSet in an Expr.
 	GetNodes() NodeSet
 }
+
 // NumLeavesGetter wraps the method for getting the number of leaves in an Expr.
 type NumLeavesGetter interface {
 	// NumLeaves returns the number of leaves in an Expr. e.g. ( a + b ) * a results in 3 leaves.

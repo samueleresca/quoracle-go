@@ -7,8 +7,6 @@ import (
 	"sort"
 )
 
-
-
 // nameToNode keeps track of the name to node mapping ( "a"-> Node("a")).
 type nameToNode = map[string]Node
 
@@ -42,20 +40,6 @@ type lpVariable struct {
 //		a − b < b − c -> -∞ ≤ a - 2b + c ≤ -1 | The main objective codified from the problem.
 //
 // The problem can also be represented using an lpDefinition as follows:
-// lpDefinition {
-// 	Vars: [1.0, 1.0, 1.0] // diceA, diceB, diceC
-//  Constraints: [
-//					[1, 6]
-//					[1, 6]
-//					[1, 6]
-// 				 ],
-//	Obj: [
-//				   LB  A    B    C    UB
-//               {1.0, 1.0, -1.0, 0.0, pinf},  // 1 ≤ a - b ≤ ∞
-//               {1.0, 0.0, 1.0, -1.0, pinf},  // 1 ≤ b - c ≤ ∞
-//               {ninf, 1.0, -2.0, 1.0, -1.0}, // -∞ ≤ a - 2b + c ≤ -1
-// 		 ]
-// }
 
 type lpDefinition struct {
 	Vars        []float64
@@ -63,12 +47,35 @@ type lpDefinition struct {
 	Objectives  [][]float64
 }
 
+func newDefinitionWithVarsAndConstraints(readQuorumVars []lpVariable, writeQuorumVars []lpVariable) lpDefinition {
+	def := lpDefinition{}
+	def.Vars = make([]float64, 0)
+	def.Constraints = make([][2]float64, 0)
+	def.Objectives = make([][]float64, 0)
+
+	// initializes target array
+	for _, v := range readQuorumVars {
+		def.Vars = append(def.Vars, 1.0)
+		b := [2]float64{v.LBound, v.UBound}
+		def.Constraints = append(def.Constraints, b)
+
+	}
+	// add constraints 0 <= q <= 1
+	for _, v := range writeQuorumVars {
+		def.Vars = append(def.Vars, 1.0)
+		b := [2]float64{v.LBound, v.UBound}
+		def.Constraints = append(def.Constraints, b)
+	}
+
+	return def
+}
+
 // QuorumSystem describes a read-write quorum system.
 type QuorumSystem struct {
 	// reads describes the read-quorum.
-	reads   Expr
+	reads Expr
 	// writes describes the write-quorum.
-	writes     Expr
+	writes Expr
 	// nameToNode keeps track the name of a node to a GetNodeByName.
 	nameToNode nameToNode
 }
@@ -505,7 +512,7 @@ func (qs QuorumSystem) writeQuorumLatency(quorum []Node) (*uint, error) {
 	return qs.quorumLatency(quorum, qs.IsWriteQuorum)
 }
 
-// quorumLatency returns the minimum latency of a given quorum.
+// quorumLatency returns the maximum latency of a given quorum.
 func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(set ExprSet) bool) (*uint, error) {
 	sortedQ := make([]Node, 0)
 
@@ -556,24 +563,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	}
 
 	network := func(networkLimit *float64) lpDefinition {
-		def := lpDefinition{}
-		def.Vars = make([]float64, 0)
-		def.Constraints = make([][2]float64, 0)
-		def.Objectives = make([][]float64, 0)
-
-		// initializes target array
-		for _, v := range readQuorumVars {
-			def.Vars = append(def.Vars, 1.0)
-			b := [2]float64{v.LBound, v.UBound}
-			def.Constraints = append(def.Constraints, b)
-
-		}
-		// add constraints 0 <= q <= 1
-		for _, v := range writeQuorumVars {
-			def.Vars = append(def.Vars, 1.0)
-			b := [2]float64{v.LBound, v.UBound}
-			def.Constraints = append(def.Constraints, b)
-		}
+		def := newDefinitionWithVarsAndConstraints(readQuorumVars, writeQuorumVars)
 
 		objExpr := make([]float64, len(def.Vars))
 
@@ -600,30 +590,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	}
 
 	latency := func(latencyLimit *float64) (lpDefinition, error) {
-		def := lpDefinition{}
-		def.Vars = make([]float64, 0)
-		def.Constraints = make([][2]float64, 0)
-		def.Objectives = make([][]float64, 0)
-
-		// initializes vars array
-		for range readQuorumVars {
-			def.Vars = append(def.Vars, 1.0)
-		}
-
-		for range writeQuorumVars {
-			def.Vars = append(def.Vars, 1.0)
-		}
-
-		// add constraints 0 <= q <= 1
-		for _, v := range readQuorumVars {
-			b := [2]float64{v.LBound, v.UBound}
-			def.Constraints = append(def.Constraints, b)
-		}
-
-		for _, v := range writeQuorumVars {
-			b := [2]float64{v.LBound, v.UBound}
-			def.Constraints = append(def.Constraints, b)
-		}
+		def := newDefinitionWithVarsAndConstraints(readQuorumVars, writeQuorumVars)
 
 		// building latency objs | -inf <= latency_def <= inf
 		objExpr := make([]float64, len(def.Vars))
@@ -675,26 +642,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	}
 
 	frLoad := func(loadLimit *float64, fr float64) (lpDefinition, error) {
-		def := lpDefinition{}
-		def.Vars = make([]float64, 0)
-		def.Constraints = make([][2]float64, 0)
-		def.Objectives = make([][]float64, 0)
-
-		// initializes target array
-		for _, v := range readQuorumVars {
-			def.Vars = append(def.Vars, 1.0)
-			b := [2]float64{v.LBound, v.UBound}
-			def.Constraints = append(def.Constraints, b)
-
-		}
-
-		// add constraints 0 <= q <= 1
-		for _, v := range writeQuorumVars {
-			def.Vars = append(def.Vars, 1.0)
-			b := [2]float64{v.LBound, v.UBound}
-			def.Constraints = append(def.Constraints, b)
-		}
-
+		def := newDefinitionWithVarsAndConstraints(readQuorumVars, writeQuorumVars)
 		// l def
 		def.Vars = append(def.Vars, 1.0)
 		def.Constraints = append(def.Constraints, [2]float64{ninf, pinf})
@@ -796,7 +744,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	return &newStrategy, nil
 }
 
-// getOptimizationVars returns the list lpVariable  for the quorums.
+// getOptimizationVars returns the list lpVariable for the quorums.
 func getOptimizationVars(readQuorums []ExprSet, writeQuorums []ExprSet) (readQuorumVars []lpVariable, xToReadQuorumVars map[Expr][]lpVariable, writeQuorumVars []lpVariable, xToWriteQuorumVars map[Expr][]lpVariable) {
 	readQuorumVars = make([]lpVariable, 0)
 	xToReadQuorumVars = make(map[Expr][]lpVariable)
@@ -819,12 +767,12 @@ func getOptimizationVars(readQuorums []ExprSet, writeQuorums []ExprSet) (readQuo
 	writeQuorumVars = make([]lpVariable, 0)
 	xToWriteQuorumVars = make(map[Expr][]lpVariable)
 
-	for i, rq := range writeQuorums {
-		q := rq
+	for i, wq := range writeQuorums {
+		q := wq
 		v := lpVariable{Name: fmt.Sprintf("w%d", i), UBound: 1, LBound: 0, Value: 1.0, Index: len(readQuorums) + i, Quorum: q}
 		writeQuorumVars = append(writeQuorumVars, v)
 
-		for n := range rq {
+		for n := range wq {
 			if _, ok := xToWriteQuorumVars[n]; !ok {
 				xToWriteQuorumVars[n] = []lpVariable{v}
 				continue

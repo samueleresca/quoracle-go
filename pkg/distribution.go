@@ -11,6 +11,7 @@ type Distribution interface {
 	GetValue() DistributionValues
 	IsSingleValue() bool
 }
+
 // DistributionValues describe a set of fraction over weight.
 type DistributionValues = map[Fraction]Weight
 
@@ -18,6 +19,7 @@ type DistributionValues = map[Fraction]Weight
 type QuorumDistribution struct {
 	values DistributionValues
 }
+
 // GetValue gets the list of DistributionValues.
 func (qd QuorumDistribution) GetValue() DistributionValues {
 	return qd.values

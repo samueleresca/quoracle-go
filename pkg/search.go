@@ -170,7 +170,7 @@ func performQuorumSearch(nodes []Expr, opts ...func(options *SearchOptions) erro
 
 	var optQS *QuorumSystem = nil
 	var optSigma *Strategy = nil
-	var optMetric *float64 = nil;
+	var optMetric *float64 = nil
 
 	doSearch := func(exprs chan Expr) error {
 
