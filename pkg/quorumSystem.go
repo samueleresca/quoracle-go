@@ -498,17 +498,17 @@ func getResilientQuorumsHelper(exprSets []ExprSet, minResilience int, n []Node, 
 }
 
 // readQuorumLatency return the latency of a read quorum.
-func (qs QuorumSystem) readQuorumLatency(quorum []Node) (*uint, error) {
+func (qs QuorumSystem) readQuorumLatency(quorum []Node) (uint, error) {
 	return qs.quorumLatency(quorum, qs.IsReadQuorum)
 }
 
 // writeQuorumLatency returns the latency of a write quorum.
-func (qs QuorumSystem) writeQuorumLatency(quorum []Node) (*uint, error) {
+func (qs QuorumSystem) writeQuorumLatency(quorum []Node) (uint, error) {
 	return qs.quorumLatency(quorum, qs.IsWriteQuorum)
 }
 
 // quorumLatency returns the maximum latency of a given quorum.
-func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(set ExprSet) bool) (*uint, error) {
+func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(set ExprSet) bool) (uint, error) {
 	sortedQ := make([]Node, 0)
 
 	for _, q := range quorum {
@@ -529,11 +529,11 @@ func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(set ExprSet) b
 		}
 
 		if isQuorum(xNodes) {
-			return sortedQ[i].Latency, nil
+			return *sortedQ[i].Latency, nil
 		}
 	}
 
-	return nil, fmt.Errorf("_quorum_latency called on a non-quorum")
+	return 0, fmt.Errorf("_quorum_latency called on a non-quorum")
 
 }
 
@@ -604,7 +604,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 				return lpDefinition{}, fmt.Errorf("error on readQuorumLatency %s", err)
 			}
 
-			objExpr[v.Index] = fr * v.Value * float64(*l)
+			objExpr[v.Index] = fr * v.Value * float64(l)
 		}
 
 		for _, v := range writeQuorumVars {
@@ -621,7 +621,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 				return lpDefinition{}, fmt.Errorf("error on writeQuorumLatency %s", err)
 			}
 
-			objExpr[v.Index] = (1 - fr) * v.Value * float64(*l)
+			objExpr[v.Index] = (1 - fr) * v.Value * float64(l)
 		}
 
 		objExpr = append([]float64{ninf}, objExpr...)

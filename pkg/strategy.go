@@ -210,7 +210,7 @@ func (s Strategy) Latency(rf *Distribution, wf *Distribution) (float64, error) {
 			return -1, err
 		}
 
-		reads += float64(*v) * rq.Probability
+		reads += float64(v) * rq.Probability
 	}
 
 	writes := 0.0
@@ -227,7 +227,7 @@ func (s Strategy) Latency(rf *Distribution, wf *Distribution) (float64, error) {
 		if err != nil {
 			return -1, err
 		}
-		writes += float64(*v) * wq.Probability
+		writes += float64(v) * wq.Probability
 	}
 
 	total := frsum*reads + (1-frsum)*writes
