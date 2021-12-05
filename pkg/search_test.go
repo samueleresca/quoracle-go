@@ -63,6 +63,7 @@ func TestPartitions(t *testing.T) {
 	}
 
 	index = 0
+
 	for actual := range partitionings([]Expr{node1, node2, node3, node4}) {
 		_, ok := expected[fmt.Sprint(actual)]
 		assert.Assert(t, ok == true, actual)

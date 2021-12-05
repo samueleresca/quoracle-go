@@ -40,16 +40,16 @@ func TestInit(t *testing.T) {
 	a, b, c := NewNode("a"), NewNode("b"), NewNode("c")
 
 	qs := NewQuorumSystemWithReads(a.Add(b))
-	assertQuorums(qs.Reads, [][]string{{"a"}, {"b"}})
-	assertQuorums(qs.Writes, [][]string{{"a", "b"}})
+	assertQuorums(qs.reads, [][]string{{"a"}, {"b"}})
+	assertQuorums(qs.writes, [][]string{{"a", "b"}})
 
 	qs = NewQuorumSystemWithWrites(a.Add(b))
-	assertQuorums(qs.Writes, [][]string{{"a"}, {"b"}})
-	assertQuorums(qs.Reads, [][]string{{"a", "b"}})
+	assertQuorums(qs.writes, [][]string{{"a"}, {"b"}})
+	assertQuorums(qs.reads, [][]string{{"a", "b"}})
 
 	qs, _ = NewQuorumSystem(a.Add(b), a.Multiply(b).Multiply(c))
-	assertQuorums(qs.Reads, [][]string{{"a"}, {"b"}})
-	assertQuorums(qs.Writes, [][]string{{"a", "b", "c"}})
+	assertQuorums(qs.reads, [][]string{{"a"}, {"b"}})
+	assertQuorums(qs.writes, [][]string{{"a", "b", "c"}})
 
 	_, err := NewQuorumSystem(a.Add(b), a)
 
@@ -293,10 +293,10 @@ func TestOptimalStrategyLoad(t *testing.T) {
 	}
 
 	load, _ := qs.Load(strategyOptions)
-	assert.Assert(t, math.Abs(*load-0.25) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(load-0.25) <= float64EqualityThreshold)
 
 	cap, _ := qs.Capacity(strategyOptions)
-	assert.Assert(t, math.Abs(*cap-4) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(cap-4) <= float64EqualityThreshold)
 
 	strategyOptions = StrategyOptions{
 		Optimize: Load,
@@ -305,10 +305,10 @@ func TestOptimalStrategyLoad(t *testing.T) {
 	}
 
 	load, _ = qs.Load(strategyOptions)
-	assert.Assert(t, math.Abs(*load-0.5) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(load-0.5) <= float64EqualityThreshold)
 
 	cap, _ = qs.Capacity(strategyOptions)
-	assert.Assert(t, math.Abs(*cap-2) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(cap-2) <= float64EqualityThreshold)
 
 	networkLimit := 2.0
 	strategyOptions = StrategyOptions{
@@ -319,10 +319,10 @@ func TestOptimalStrategyLoad(t *testing.T) {
 	}
 
 	load, _ = qs.Load(strategyOptions)
-	assert.Assert(t, math.Abs(*load-0.25) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(load-0.25) <= float64EqualityThreshold)
 
 	cap, _ = qs.Capacity(strategyOptions)
-	assert.Assert(t, math.Abs(*cap-4) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(cap-4) <= float64EqualityThreshold)
 
 	strategyOptions = StrategyOptions{
 		Optimize:     Load,
@@ -332,10 +332,10 @@ func TestOptimalStrategyLoad(t *testing.T) {
 	}
 
 	load, _ = qs.Load(strategyOptions)
-	assert.Assert(t, math.Abs(*load-0.5) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(load-0.5) <= float64EqualityThreshold)
 
 	cap, _ = qs.Capacity(strategyOptions)
-	assert.Assert(t, math.Abs(*cap-2) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(cap-2) <= float64EqualityThreshold)
 
 	latencyLimit := 4.0
 	strategyOptions = StrategyOptions{
@@ -346,10 +346,10 @@ func TestOptimalStrategyLoad(t *testing.T) {
 	}
 
 	load, _ = qs.Load(strategyOptions)
-	assert.Assert(t, math.Abs(*load-0.25) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(load-0.25) <= float64EqualityThreshold)
 
 	cap, _ = qs.Capacity(strategyOptions)
-	assert.Assert(t, math.Abs(*cap-4) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(cap-4) <= float64EqualityThreshold)
 
 	strategyOptions = StrategyOptions{
 		Optimize:     Load,
@@ -359,10 +359,10 @@ func TestOptimalStrategyLoad(t *testing.T) {
 	}
 
 	load, _ = qs.Load(strategyOptions)
-	assert.Assert(t, math.Abs(*load-0.5) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(load-0.5) <= float64EqualityThreshold)
 
 	cap, _ = qs.Capacity(strategyOptions)
-	assert.Assert(t, math.Abs(*cap-2) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(cap-2) <= float64EqualityThreshold)
 
 	strategyOptions = StrategyOptions{
 		Optimize: Load,
@@ -372,7 +372,7 @@ func TestOptimalStrategyLoad(t *testing.T) {
 	}
 
 	load, _ = qs.Load(strategyOptions)
-	assert.Assert(t, math.Abs(*load-0.5) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(load-0.5) <= float64EqualityThreshold)
 
 	strategyOptions = StrategyOptions{
 		Optimize: Load,
@@ -382,7 +382,7 @@ func TestOptimalStrategyLoad(t *testing.T) {
 	}
 
 	cap, _ = qs.Capacity(strategyOptions)
-	assert.Assert(t, math.Abs(*cap-2) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(cap-2) <= float64EqualityThreshold)
 
 	strategyOptions = StrategyOptions{
 		Optimize: Load,
@@ -392,7 +392,7 @@ func TestOptimalStrategyLoad(t *testing.T) {
 	}
 
 	load, _ = qs.Load(strategyOptions)
-	assert.Assert(t, math.Abs(*load-1) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(load-1) <= float64EqualityThreshold)
 
 	strategyOptions = StrategyOptions{
 		Optimize: Load,
@@ -402,7 +402,7 @@ func TestOptimalStrategyLoad(t *testing.T) {
 	}
 
 	cap, _ = qs.Capacity(strategyOptions)
-	assert.Assert(t, math.Abs(*cap-1) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(cap-1) <= float64EqualityThreshold)
 }
 
 func TestOptimalStrategyNetwork(t *testing.T) {
@@ -422,7 +422,7 @@ func TestOptimalStrategyNetwork(t *testing.T) {
 			values: map[Fraction]Weight{1: 1}},
 	}
 	networkLoad, _ := qs.NetworkLoad(strategyOptions)
-	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(networkLoad-2) <= float64EqualityThreshold)
 
 	strategyOptions = StrategyOptions{
 		Optimize: Network,
@@ -430,7 +430,7 @@ func TestOptimalStrategyNetwork(t *testing.T) {
 			values: map[Fraction]Weight{1: 1}},
 	}
 	networkLoad, _ = qs.NetworkLoad(strategyOptions)
-	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(networkLoad-2) <= float64EqualityThreshold)
 
 	loadLimit := 0.25
 	strategyOptions = StrategyOptions{
@@ -440,7 +440,7 @@ func TestOptimalStrategyNetwork(t *testing.T) {
 			values: map[Fraction]Weight{1: 1}},
 	}
 	networkLoad, _ = qs.NetworkLoad(strategyOptions)
-	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(networkLoad-2) <= float64EqualityThreshold)
 
 	loadLimit = 0.5
 	strategyOptions = StrategyOptions{
@@ -450,7 +450,7 @@ func TestOptimalStrategyNetwork(t *testing.T) {
 			values: map[Fraction]Weight{1: 1}},
 	}
 	networkLoad, _ = qs.NetworkLoad(strategyOptions)
-	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(networkLoad-2) <= float64EqualityThreshold)
 
 	latencyLimit := 2.0
 
@@ -461,7 +461,7 @@ func TestOptimalStrategyNetwork(t *testing.T) {
 			values: map[Fraction]Weight{1: 1}},
 	}
 	networkLoad, _ = qs.NetworkLoad(strategyOptions)
-	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(networkLoad-2) <= float64EqualityThreshold)
 
 	latencyLimit = 3.0
 
@@ -472,7 +472,7 @@ func TestOptimalStrategyNetwork(t *testing.T) {
 			values: map[Fraction]Weight{1: 1}},
 	}
 	networkLoad, _ = qs.NetworkLoad(strategyOptions)
-	assert.Assert(t, math.Abs(*networkLoad-2) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(networkLoad-2) <= float64EqualityThreshold)
 
 	strategyOptions = StrategyOptions{
 		Optimize: Network,
@@ -481,7 +481,7 @@ func TestOptimalStrategyNetwork(t *testing.T) {
 			values: map[Fraction]Weight{1: 1}},
 	}
 	networkLoad, _ = qs.NetworkLoad(strategyOptions)
-	assert.Assert(t, math.Abs(*networkLoad-4) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(networkLoad-4) <= float64EqualityThreshold)
 
 	strategyOptions = StrategyOptions{
 		Optimize: Network,
@@ -490,7 +490,7 @@ func TestOptimalStrategyNetwork(t *testing.T) {
 			values: map[Fraction]Weight{1: 1}},
 	}
 	networkLoad, _ = qs.NetworkLoad(strategyOptions)
-	assert.Assert(t, math.Abs(*networkLoad-4) <= float64EqualityThreshold)
+	assert.Assert(t, math.Abs(networkLoad-4) <= float64EqualityThreshold)
 }
 
 func TestOptimalStrategyLatency(t *testing.T) {
@@ -511,7 +511,7 @@ func TestOptimalStrategyLatency(t *testing.T) {
 	}
 
 	latency, _ := qs.Latency(strategyOptions)
-	assert.Assert(t, math.Abs(*latency-2) <= float64EqualityThreshold, fmt.Sprintf("Actual:%f", *latency))
+	assert.Assert(t, math.Abs(latency-2) <= float64EqualityThreshold, fmt.Sprintf("Actual:%f", latency))
 
 	strategyOptions = StrategyOptions{
 		Optimize: Latency,
@@ -520,7 +520,7 @@ func TestOptimalStrategyLatency(t *testing.T) {
 	}
 
 	latency, _ = qs.Latency(strategyOptions)
-	assert.Assert(t, math.Abs(*latency-3) <= float64EqualityThreshold, fmt.Sprintf("Actual:%f", *latency))
+	assert.Assert(t, math.Abs(latency-3) <= float64EqualityThreshold, fmt.Sprintf("Actual:%f", latency))
 
 	loadLimit := 1.0
 
@@ -532,7 +532,7 @@ func TestOptimalStrategyLatency(t *testing.T) {
 	}
 
 	latency, _ = qs.Latency(strategyOptions)
-	assert.Assert(t, math.Abs(*latency-2) <= float64EqualityThreshold, fmt.Sprintf("Actual:%f", *latency))
+	assert.Assert(t, math.Abs(latency-2) <= float64EqualityThreshold, fmt.Sprintf("Actual:%f", latency))
 
 	loadLimit = 1.0
 
@@ -544,7 +544,7 @@ func TestOptimalStrategyLatency(t *testing.T) {
 	}
 
 	latency, _ = qs.Latency(strategyOptions)
-	assert.Assert(t, math.Abs(*latency-3) <= float64EqualityThreshold, fmt.Sprintf("Actual:%f", *latency))
+	assert.Assert(t, math.Abs(latency-3) <= float64EqualityThreshold, fmt.Sprintf("Actual:%f", latency))
 
 	networkLimit := 2.0
 
@@ -556,7 +556,7 @@ func TestOptimalStrategyLatency(t *testing.T) {
 	}
 
 	latency, _ = qs.Latency(strategyOptions)
-	assert.Assert(t, math.Abs(*latency-2) <= float64EqualityThreshold, fmt.Sprintf("Actual:%f", *latency))
+	assert.Assert(t, math.Abs(latency-2) <= float64EqualityThreshold, fmt.Sprintf("Actual:%f", latency))
 
 	networkLimit = 2.0
 
@@ -568,7 +568,7 @@ func TestOptimalStrategyLatency(t *testing.T) {
 	}
 
 	latency, _ = qs.Latency(strategyOptions)
-	assert.Assert(t, math.Abs(*latency-3) <= float64EqualityThreshold, fmt.Sprintf("Actual:%f", *latency))
+	assert.Assert(t, math.Abs(latency-3) <= float64EqualityThreshold, fmt.Sprintf("Actual:%f", latency))
 
 	strategyOptions = StrategyOptions{
 		Optimize: Latency,
@@ -577,7 +577,7 @@ func TestOptimalStrategyLatency(t *testing.T) {
 			values: map[Fraction]Weight{1: 1}},
 	}
 	latency, _ = qs.Latency(strategyOptions)
-	assert.Assert(t, math.Abs(*latency-2) <= float64EqualityThreshold, fmt.Sprintf("Actual:%f", *latency))
+	assert.Assert(t, math.Abs(latency-2) <= float64EqualityThreshold, fmt.Sprintf("Actual:%f", latency))
 
 	strategyOptions = StrategyOptions{
 		Optimize: Latency,
@@ -586,7 +586,7 @@ func TestOptimalStrategyLatency(t *testing.T) {
 			values: map[Fraction]Weight{1: 1}},
 	}
 	latency, _ = qs.Latency(strategyOptions)
-	assert.Assert(t, math.Abs(*latency-3) <= float64EqualityThreshold, fmt.Sprintf("Actual:%f", *latency))
+	assert.Assert(t, math.Abs(latency-3) <= float64EqualityThreshold, fmt.Sprintf("Actual:%f", latency))
 }
 
 func TestOptimalStrategyIllegalSpecs(t *testing.T) {
@@ -606,7 +606,7 @@ func TestOptimalStrategyIllegalSpecs(t *testing.T) {
 
 	_, err := qs.Load(strategyOptions)
 
-	assert.Assert(t, err.Error() == "a load limit cannot be set when optimizing for load")
+	assert.Assert(t, err.Error() == "a getLoadObjective limit cannot be set when optimizing for getLoadObjective")
 
 	networkLimit := 1.0
 	strategyOptions = StrategyOptions{

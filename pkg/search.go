@@ -158,7 +158,7 @@ func performQuorumSearch(nodes []Expr, opts ...func(options *SearchOptions) erro
 
 	start := time.Now()
 
-	metric := func(sigma Strategy) (*float64, error) {
+	metric := func(sigma Strategy) (float64, error) {
 		if sb.Optimize == Load {
 			return sigma.Load(&sb.ReadFraction, &sb.WriteFraction)
 		} else if sb.Optimize == Network {
@@ -205,10 +205,10 @@ func performQuorumSearch(nodes []Expr, opts ...func(options *SearchOptions) erro
 				continue
 			}
 
-			if optMetric == nil || *sigmaMetric < *optMetric {
+			if optMetric == nil || sigmaMetric < *optMetric {
 				optQS = &qs
 				optSigma = sigma
-				optMetric = sigmaMetric
+				optMetric = &sigmaMetric
 			}
 
 			t := time.Now()

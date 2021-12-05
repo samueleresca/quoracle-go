@@ -99,7 +99,7 @@ func TestIsQuorum(t *testing.T) {
 	expr := a.Add(b).Add(c)
 
 	tests := []struct {
-		expr    Quorum
+		expr     Quorum
 		expected ExprSet
 		isQuorum bool
 	}{
@@ -120,7 +120,7 @@ func TestIsQuorum(t *testing.T) {
 	chooseExp, _ := NewChoose(2, []Expr{a, b, c})
 
 	tests = []struct {
-		expr    Quorum
+		expr     Quorum
 		expected ExprSet
 		isQuorum bool
 	}{
@@ -144,7 +144,7 @@ func TestIsQuorum(t *testing.T) {
 	exprAnd := a.Multiply(b).Multiply(c)
 
 	tests = []struct {
-		expr    Quorum
+		expr     Quorum
 		expected ExprSet
 		isQuorum bool
 	}{
@@ -168,7 +168,7 @@ func TestIsQuorum(t *testing.T) {
 	exprp := a.Add(b).Multiply(c.Add(d))
 
 	tests = []struct {
-		expr    Quorum
+		expr     Quorum
 		expected ExprSet
 		isQuorum bool
 	}{

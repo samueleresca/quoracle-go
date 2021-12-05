@@ -5,17 +5,19 @@ import (
 	"github.com/lanl/clp"
 	"math"
 	"math/bits"
+	"reflect"
 	"sort"
 	"strings"
 )
 
 // ExprSet describes a set of Expr.
 type ExprSet = map[Expr]bool
+
 // NodeSet describes a set of Node.
 type NodeSet = map[Node]bool
 
-// NodesOperator that wraps the Add and Multiply methods needed to build a quorum from a set of Node.
-type NodesOperator interface {
+// ExprOperator that wraps the Add and Multiply methods needed to build a quorum from a set of Node.
+type ExprOperator interface {
 	// Add method aggregate a Node to an Expr with a logical Or (a ∨ b)
 	// returns the resulting Or operation.
 	Add(expr Expr) Or
@@ -24,30 +26,30 @@ type NodesOperator interface {
 	Multiply(expr Expr) And
 }
 
+// ExprGetter wraps some methods to retrieve the Expr.
+type ExprGetter interface {
+	// GetExprs methods returns a []Expr representing the Expr.
+	GetExprs() []Expr
+}
+
+// NodeGetter wraps the method for getting the NodeSet from an Expr.
+type NodeGetter interface {
+	// GetNodes returns a NodeSet with the NodeSet in an Expr.
+	GetNodes() NodeSet
+}
+
+// NumLeavesGetter wraps the method for getting the number of leaves in an Expr.
+type NumLeavesGetter interface {
+	// NumLeaves returns the number of leaves in an Expr. e.g. ( a + b ) * a results in 3 leaves.
+	NumLeaves() uint
+}
+
 // DualOperator wraps a basic Dual method.
 type DualOperator interface {
 	// Dual method returns the logic Dual of an Expr. The Dual of a boolean Expr is the Expr one obtains
 	// by interchanging addition and multiplication and interchanging 0’s and 1’s.
 	// see: https://www.cs.fsu.edu/~lacher/courses/MAD3105/lectures/s4_1boolfn.pdf
 	Dual() Expr
-}
-
-// ExprGetter wraps some methods to retrieve the Expr.
-type ExprGetter interface {
-	// GetType methods return the type of the Expr in form of a string.
-	GetType() string
-	// GetExprs methods returns a []Expr representing the Expr.
-	GetExprs() []Expr
-}
-// NodeGetter wraps the method for getting the NodeSet from an Expr.
-type NodeGetter interface {
-	// GetNodes returns a NodeSet with the NodeSet in an Expr.
-	GetNodes() NodeSet
-}
-// NumLeavesGetter wraps the method for getting the number of leaves in an Expr.
-type NumLeavesGetter interface {
-	// NumLeaves returns the number of leaves in an Expr. e.g. ( a + b ) * a results in 3 leaves.
-	NumLeaves() uint
 }
 
 // ResilienceCalculator wraps the method for calculating the resilience of a quorum.
@@ -74,17 +76,18 @@ type Quorum interface {
 	// IsQuorum returns true if the ExprSet is a quorum otherwise it returns false.
 	IsQuorum(set ExprSet) bool
 }
-// Expr represent an logic expressions between nodes or other expressions and its own methods.
+
+// Expr represent a logic expressions between nodes or other expressions and its own methods.
 type Expr interface {
 	Quorum
-	NodesOperator
-	ExprGetter
+	ExprOperator
 	DualOperator
+	ExprGetter
 	NodeGetter
+	NumLeavesGetter
 	DuplicateChecker
 	MinFailuresCalculator
 	ResilienceCalculator
-	NumLeavesGetter
 	fmt.Stringer
 }
 
@@ -208,7 +211,7 @@ func (n Node) String() string {
 }
 
 func (n Node) GetType() string {
-	return "Node"
+	return "GetNodeByName"
 }
 
 func (n Node) GetExprs() []Expr {
@@ -658,11 +661,11 @@ func (e Choose) Dual() Expr {
 
 // mergeWithOr returns a Or expression between two input expressions.
 func mergeWithOr(lhs Expr, rhs Expr) Or {
-	if lhs.GetType() == "Or" && rhs.GetType() == "Or" {
+	if reflect.TypeOf(lhs).Name() == "Or" && reflect.TypeOf(rhs).String() == "Or" {
 		return Or{append(lhs.GetExprs(), rhs.GetExprs()...)}
-	} else if lhs.GetType() == "Or" {
+	} else if reflect.TypeOf(lhs).Name() == "Or" {
 		return Or{append(lhs.GetExprs(), rhs)}
-	} else if rhs.GetType() == "Or" {
+	} else if reflect.TypeOf(rhs).String() == "Or" {
 		return Or{append([]Expr{lhs}, rhs.GetExprs()...)}
 	} else {
 		return Or{[]Expr{lhs, rhs}}
@@ -671,11 +674,11 @@ func mergeWithOr(lhs Expr, rhs Expr) Or {
 
 // mergeWithAnd returns an And expression between two input expressions.
 func mergeWithAnd(lhs Expr, rhs Expr) And {
-	if lhs.GetType() == "And" && rhs.GetType() == "And" {
+	if reflect.TypeOf(lhs).Name() == "And" && reflect.TypeOf(rhs).String() == "And" {
 		return And{append(lhs.GetExprs(), rhs.GetExprs()...)}
-	} else if lhs.GetType() == "And" {
+	} else if reflect.TypeOf(lhs).Name() == "And" {
 		return And{append(lhs.GetExprs(), rhs)}
-	} else if rhs.GetType() == "And" {
+	} else if reflect.TypeOf(rhs).String() == "And" {
 		return And{append([]Expr{lhs}, rhs.GetExprs()...)}
 	} else {
 		return And{[]Expr{lhs, rhs}}
@@ -743,8 +746,8 @@ func combinations(set []Expr, n int) (subsets [][]Expr) {
 	return subsets
 }
 
-//exprSetToArr given an input ExprSet returns an []Expr.
-func exprSetToArr(input ExprSet) []Expr {
+//setToArr given an input ExprSet returns an []Expr.
+func setToArr(input ExprSet) []Expr {
 	result := make([]Expr, 0)
 
 	for k := range input {
