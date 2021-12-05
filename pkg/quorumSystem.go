@@ -46,6 +46,7 @@ type lpDefinition struct {
 	Constraints [][2]float64
 	Objectives  [][]float64
 }
+
 // newDefinitionWithVars
 func newDefinitionWithVarsAndConstraints(vars ...[]lpVariable) lpDefinition {
 	def := lpDefinition{}
@@ -549,7 +550,8 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	ninf := math.Inf(-1)
 	pinf := math.Inf(1)
 
-	readQuorumVars, xToReadQuorumVars, writeQuorumVars, xToWriteQuorumVars := getOptimizationVars(readQuorums, writeQuorums)
+	readQuorumVars, xToReadQuorumVars := getOptimizationVars(readQuorums, "r%d", 0)
+	writeQuorumVars, xToWriteQuorumVars := getOptimizationVars(writeQuorums, "w%d", len(readQuorums))
 
 	fr := 0.0
 
@@ -591,14 +593,14 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		objExpr := make([]float64, len(def.Vars))
 
 		for _, v := range readQuorumVars {
-			quorum := make([]Node, 0)
+			nodes := make([]Node, 0)
 
 			for x := range v.Quorum {
 				q := qs.GetNodeByName(x.String())
-				quorum = append(quorum, q)
+				nodes = append(nodes, q)
 			}
 
-			l, err := qs.readQuorumLatency(quorum)
+			l, err := qs.readQuorumLatency(nodes)
 
 			if err != nil {
 				return lpDefinition{}, fmt.Errorf("error on readQuorumLatency %s", err)
@@ -608,14 +610,14 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		}
 
 		for _, v := range writeQuorumVars {
-			quorum := make([]Node, 0)
+			nodes := make([]Node, 0)
 
 			for x := range v.Quorum {
 				q := qs.GetNodeByName(x.String())
-				quorum = append(quorum, q)
+				nodes = append(nodes, q)
 			}
 
-			l, err := qs.writeQuorumLatency(quorum)
+			l, err := qs.writeQuorumLatency(nodes)
 
 			if err != nil {
 				return lpDefinition{}, fmt.Errorf("error on writeQuorumLatency %s", err)
@@ -739,43 +741,27 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	return &newStrategy, nil
 }
 
-// getOptimizationVars returns the list lpVariable for the quorums.
-func getOptimizationVars(readQuorums []ExprSet, writeQuorums []ExprSet) (readQuorumVars []lpVariable, xToReadQuorumVars map[Expr][]lpVariable, writeQuorumVars []lpVariable, xToWriteQuorumVars map[Expr][]lpVariable) {
-	readQuorumVars = make([]lpVariable, 0)
-	xToReadQuorumVars = make(map[Expr][]lpVariable)
+// getOptimizationVars returns the list lpVariable for a list of quorums.
+func getOptimizationVars(quorums []ExprSet, name string, startIndex int) (quorumVars []lpVariable, quorumToQuorumVar map[Expr][]lpVariable) {
+	quorumVars = make([]lpVariable, 0)
+	quorumToQuorumVar = make(map[Expr][]lpVariable)
 
-	for i, rq := range readQuorums {
+	for i, rq := range quorums {
 		q := rq
-		v := lpVariable{Name: fmt.Sprintf("r%b", i), UBound: 1, LBound: 0, Value: 1.0, Index: i, Quorum: q}
-		readQuorumVars = append(readQuorumVars, v)
+		v := lpVariable{Name: fmt.Sprintf(name, i), UBound: 1, LBound: 0, Value: 1.0, Index: i + startIndex, Quorum: q}
+		quorumVars = append(quorumVars, v)
 
 		for n := range rq {
 
-			if _, ok := xToReadQuorumVars[n]; !ok {
-				xToReadQuorumVars[n] = []lpVariable{v}
+			if _, ok := quorumToQuorumVar[n]; !ok {
+				quorumToQuorumVar[n] = []lpVariable{v}
 				continue
 			}
-			xToReadQuorumVars[n] = append(xToReadQuorumVars[n], v)
+			quorumToQuorumVar[n] = append(quorumToQuorumVar[n], v)
 		}
 	}
 
-	writeQuorumVars = make([]lpVariable, 0)
-	xToWriteQuorumVars = make(map[Expr][]lpVariable)
-
-	for i, wq := range writeQuorums {
-		q := wq
-		v := lpVariable{Name: fmt.Sprintf("w%d", i), UBound: 1, LBound: 0, Value: 1.0, Index: len(readQuorums) + i, Quorum: q}
-		writeQuorumVars = append(writeQuorumVars, v)
-
-		for n := range wq {
-			if _, ok := xToWriteQuorumVars[n]; !ok {
-				xToWriteQuorumVars[n] = []lpVariable{v}
-				continue
-			}
-			xToWriteQuorumVars[n] = append(xToWriteQuorumVars[n], v)
-		}
-	}
-	return readQuorumVars, xToReadQuorumVars, writeQuorumVars, xToWriteQuorumVars
+	return quorumVars, quorumToQuorumVar
 }
 
 // getBaseConstraints returns the list of lpVariable for the strategy optimization process.
