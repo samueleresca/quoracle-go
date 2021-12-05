@@ -46,25 +46,20 @@ type lpDefinition struct {
 	Constraints [][2]float64
 	Objectives  [][]float64
 }
-
-func newDefinitionWithVarsAndConstraints(readQuorumVars []lpVariable, writeQuorumVars []lpVariable) lpDefinition {
+// newDefinitionWithVars
+func newDefinitionWithVarsAndConstraints(vars ...[]lpVariable) lpDefinition {
 	def := lpDefinition{}
 	def.Vars = make([]float64, 0)
 	def.Constraints = make([][2]float64, 0)
 	def.Objectives = make([][]float64, 0)
 
-	// initializes target array
-	for _, v := range readQuorumVars {
-		def.Vars = append(def.Vars, 1.0)
-		b := [2]float64{v.LBound, v.UBound}
-		def.Constraints = append(def.Constraints, b)
+	for _, vArr := range vars {
+		for _, v := range vArr {
+			def.Vars = append(def.Vars, 1.0)
+			b := [2]float64{v.LBound, v.UBound}
+			def.Constraints = append(def.Constraints, b)
 
-	}
-	// add constraints 0 <= q <= 1
-	for _, v := range writeQuorumVars {
-		def.Vars = append(def.Vars, 1.0)
-		b := [2]float64{v.LBound, v.UBound}
-		def.Constraints = append(def.Constraints, b)
+		}
 	}
 
 	return def
