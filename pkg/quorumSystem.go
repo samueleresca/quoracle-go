@@ -667,6 +667,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		return def, nil
 	}
 
+	// Declare a new  Simplex problem with a clp.Minimize optimization direction.
 	simp := clp.NewSimplex()
 	simp.SetOptimizationDirection(clp.Minimize)
 
@@ -704,8 +705,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	}
 
 	if networkLimit != nil {
-		defTemp := network(networkLimit)
-		def.Objectives = merge(def.Objectives, defTemp.Objectives)
+		def.Objectives = merge(def.Objectives, network(networkLimit).Objectives)
 	}
 
 	if latencyLimit != nil {
@@ -726,15 +726,11 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	writeSigma := make([]SigmaRecord, 0)
 
 	for _, v := range readQuorumVars {
-		if soln[v.Index] != 0 {
-			readSigma = append(readSigma, SigmaRecord{Quorum: v.Quorum, Probability: soln[v.Index]})
-		}
+		readSigma = append(readSigma, SigmaRecord{Quorum: v.Quorum, Probability: soln[v.Index]})
 	}
 
 	for _, v := range writeQuorumVars {
-		if soln[v.Index] != 0 {
-			writeSigma = append(writeSigma, SigmaRecord{Quorum: v.Quorum, Probability: soln[v.Index]})
-		}
+		writeSigma = append(writeSigma, SigmaRecord{Quorum: v.Quorum, Probability: soln[v.Index]})
 	}
 
 	newStrategy := NewStrategy(qs, Sigma{Values: readSigma}, Sigma{Values: writeSigma})
