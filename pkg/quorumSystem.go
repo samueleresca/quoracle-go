@@ -618,7 +618,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 			l, err := qs.writeQuorumLatency(quorum)
 
 			if err != nil {
-				return lpDefinition{}, fmt.Errorf("Error on writeQuorumLatency %s", err)
+				return lpDefinition{}, fmt.Errorf("error on writeQuorumLatency %s", err)
 			}
 
 			objExpr[v.Index] = (1 - fr) * v.Value * float64(*l)
