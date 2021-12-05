@@ -47,12 +47,9 @@ type lpDefinition struct {
 	Objectives  [][]float64
 }
 
-// newDefinitionWithVars
+// newDefinitionWithVarsAndConstraints returns a lpDefinition with the pre-populated constraints using the lpVariable in input.
 func newDefinitionWithVarsAndConstraints(vars ...[]lpVariable) lpDefinition {
 	def := lpDefinition{}
-	def.Vars = make([]float64, 0)
-	def.Constraints = make([][2]float64, 0)
-	def.Objectives = make([][]float64, 0)
 
 	for _, vArr := range vars {
 		for _, v := range vArr {
@@ -672,9 +669,6 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	simp.SetOptimizationDirection(clp.Minimize)
 
 	def := lpDefinition{}
-	def.Vars = make([]float64, 0)
-	def.Constraints = make([][2]float64, 0)
-	def.Objectives = make([][]float64, 0)
 
 	if optimize == Load {
 		def = getLoadObjective(readFraction, loadLimit, frLoad)
