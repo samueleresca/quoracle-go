@@ -460,17 +460,17 @@ func (qs QuorumSystem) minimize(sets []ExprSet) []ExprSet {
 }
 
 // getResilientQuorums returns a set of quorums that has a resilience f.
-func (qs QuorumSystem) getResilientQuorums(f int, n []Node, e Expr) []ExprSet {
+func (qs QuorumSystem) getResilientQuorums(f uint, n []Node, e Expr) []ExprSet {
 	cur := ExprSet{}
 	result := make([]ExprSet, 0)
 	return getResilientQuorumsHelper(result, f, n, e, cur, 0)
 }
 
-func getResilientQuorumsHelper(exprSets []ExprSet, minResilience int, n []Node, e Quorum, cur ExprSet, i int) []ExprSet {
+func getResilientQuorumsHelper(exprSets []ExprSet, minResilience uint, n []Node, e Quorum, cur ExprSet, i int) []ExprSet {
 	minf := minResilience
 
-	if minResilience > len(cur) {
-		minf = len(cur)
+	if minResilience > uint(len(cur)) {
+		minf = uint(len(cur))
 	}
 
 	isQuorum := true

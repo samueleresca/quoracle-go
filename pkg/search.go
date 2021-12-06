@@ -13,10 +13,11 @@ type SearchOptions struct {
 	ReadFraction Distribution
 	//WriteFraction represents the write workload distribution.
 	WriteFraction Distribution
-	//Resilience configures a resilience level of the quorum (e.g.: how many nodes can fail before we loose the quorum).
+	//Resilience configures a resilience level threshold for the quorum system.
 	Resilience uint
-	//
-	F int
+	// F r ∈ R is F-resilient for some integer f if despite removing
+	// any f nodes from r, r is still a read quorum
+	F uint
 	//TimeoutSecs the number of seconds we can keep searching.
 	TimeoutSecs float64
 	//LoadLimit represents the load limit constraint.

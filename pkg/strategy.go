@@ -31,7 +31,7 @@ type StrategyOptions struct {
 	WriteFraction Distribution
 	// F r ∈ R is F-resilient for some integer f if despite removing
 	// any f nodes from r, r is still a read quorum
-	F int
+	F uint
 }
 
 //Strategy defines a strategy related to a QuorumSystem.
