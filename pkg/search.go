@@ -5,140 +5,32 @@ import (
 	"time"
 )
 
+// SearchOptions describes the options you can configure in the optimal strategy search.
 type SearchOptions struct {
-	Optimize      OptimizeType
-	ReadFraction  Distribution
+	//Optimize is the target of the optimization.
+	Optimize OptimizeType
+	//ReadFraction represents the read workload distribution.
+	ReadFraction Distribution
+	//WriteFraction represents the write workload distribution.
 	WriteFraction Distribution
-	Resilience    uint
-	F             int
-	TimeoutSecs   float64
-	LoadLimit     *float64
-	NetworkLimit  *float64
-	LatencyLimit  *float64
+	//Resilience configures a resilience level of the quorum (e.g.: how many nodes can fail before we loose the quorum).
+	Resilience uint
+	//
+	F int
+	//TimeoutSecs the number of seconds we can keep searching.
+	TimeoutSecs float64
+	//LoadLimit represents the load limit constraint.
+	LoadLimit *float64
+	//NetworkLimit represents the network limit constraint.
+	NetworkLimit *float64
+	//LatencyLimit represents the latency limit constraint.
+	LatencyLimit *float64
 }
 
+//SearchResult represent the result of the search of our optimal strategy.
 type SearchResult struct {
 	QuorumSystem QuorumSystem
 	Strategy     Strategy
-}
-
-func initSearchOptions(initOptions SearchOptions) func(options *SearchOptions) error {
-	init := func(options *SearchOptions) error {
-		options.Optimize = initOptions.Optimize
-		options.LatencyLimit = initOptions.LatencyLimit
-		options.NetworkLimit = initOptions.NetworkLimit
-		options.LoadLimit = initOptions.LoadLimit
-		options.F = initOptions.F
-		options.ReadFraction = initOptions.ReadFraction
-		options.WriteFraction = initOptions.WriteFraction
-		options.TimeoutSecs = initOptions.TimeoutSecs
-		options.Resilience = initOptions.Resilience
-
-		return nil
-	}
-	return init
-}
-
-func partitionings(xs []Expr) chan [][]Expr {
-	return partitioningsHelper(xs)
-}
-
-func partitioningsHelper(xs []Expr) chan [][]Expr {
-	chnl := make(chan [][]Expr)
-	if len(xs) == 0 {
-		go func() {
-			chnl <- [][]Expr{}
-			close(chnl)
-		}()
-		return chnl
-	}
-
-	x := xs[0]
-	rest := xs[1:]
-
-	go func() {
-		for partition := range partitioningsHelper(rest) {
-			newPartition := partition
-			newPartition = append([][]Expr{{x}}, newPartition...)
-
-			chnl <- newPartition
-
-			for i := 0; i < len(partition); i++ {
-				result := make([][]Expr, 0)
-				result = append(result, partition[:i]...)
-				result = append(result, append([]Expr{x}, partition[i]...))
-
-				chnl <- append(result, partition[i+1:]...)
-
-			}
-		}
-		close(chnl)
-	}()
-	return chnl
-}
-
-func dupFreeExprs(nodes []Expr, maxHeight int) chan Expr {
-	chnl := make(chan Expr, 0)
-
-	if len(nodes) == 1 {
-
-		go func() {
-			chnl <- nodes[0]
-			close(chnl)
-		}()
-
-		return chnl
-	}
-
-	if maxHeight == 1 {
-
-		go func() {
-			for k := 1; k < len(nodes)+1; k++ {
-				choose, _ := NewChoose(k, nodes)
-				chnl <- choose
-			}
-			close(chnl)
-		}()
-
-		return chnl
-	}
-
-	go func() {
-		for partitioning := range partitionings(nodes) {
-			if len(partitioning) == 1 {
-				continue
-			}
-
-			subiterators := make([][]interface{}, 0)
-
-			for _, p := range partitioning {
-				tmp := make([]interface{}, 0)
-				for e := range dupFreeExprs(p, maxHeight-1) {
-					tmp = append(tmp, e)
-				}
-
-				subiterators = append(subiterators, tmp)
-			}
-
-			for _, subexprs := range product(subiterators...) {
-
-				exprs := make([]Expr, 0)
-
-				for _, se := range subexprs {
-					exprs = append(exprs, se.(Expr))
-				}
-
-				for k := 1; k < len(subexprs)+1; k++ {
-					result, _ := NewChoose(k, exprs)
-					chnl <- result
-				}
-			}
-		}
-
-		close(chnl)
-	}()
-
-	return chnl
 }
 
 func Search(nodes []Expr, option SearchOptions) (SearchResult, error) {
@@ -245,4 +137,119 @@ func performQuorumSearch(nodes []Expr, opts ...func(options *SearchOptions) erro
 		Strategy:     *optSigma,
 	}, nil
 
+}
+
+func partitionings(xs []Expr) chan [][]Expr {
+	chnl := make(chan [][]Expr)
+	if len(xs) == 0 {
+		go func() {
+			chnl <- [][]Expr{}
+			close(chnl)
+		}()
+		return chnl
+	}
+
+	x := xs[0]
+	rest := xs[1:]
+
+	go func() {
+		for partition := range partitionings(rest) {
+			newPartition := partition
+			newPartition = append([][]Expr{{x}}, newPartition...)
+
+			chnl <- newPartition
+
+			for i := 0; i < len(partition); i++ {
+				result := make([][]Expr, 0)
+				result = append(result, partition[:i]...)
+				result = append(result, append([]Expr{x}, partition[i]...))
+
+				chnl <- append(result, partition[i+1:]...)
+
+			}
+		}
+		close(chnl)
+	}()
+	return chnl
+}
+
+func dupFreeExprs(nodes []Expr, maxHeight int) chan Expr {
+	chnl := make(chan Expr, 0)
+
+	if len(nodes) == 1 {
+
+		go func() {
+			chnl <- nodes[0]
+			close(chnl)
+		}()
+
+		return chnl
+	}
+
+	if maxHeight == 1 {
+
+		go func() {
+			for k := 1; k < len(nodes)+1; k++ {
+				choose, _ := NewChoose(k, nodes)
+				chnl <- choose
+			}
+			close(chnl)
+		}()
+
+		return chnl
+	}
+
+	go func() {
+		for partitioning := range partitionings(nodes) {
+			if len(partitioning) == 1 {
+				continue
+			}
+
+			subiterators := make([][]interface{}, 0)
+
+			for _, p := range partitioning {
+				tmp := make([]interface{}, 0)
+				for e := range dupFreeExprs(p, maxHeight-1) {
+					tmp = append(tmp, e)
+				}
+
+				subiterators = append(subiterators, tmp)
+			}
+
+			for _, subexprs := range product(subiterators...) {
+
+				exprs := make([]Expr, 0)
+
+				for _, se := range subexprs {
+					exprs = append(exprs, se.(Expr))
+				}
+
+				for k := 1; k < len(subexprs)+1; k++ {
+					result, _ := NewChoose(k, exprs)
+					chnl <- result
+				}
+			}
+		}
+
+		close(chnl)
+	}()
+
+	return chnl
+}
+
+func initSearchOptions(initOptions SearchOptions) func(options *SearchOptions) error {
+	init := func(options *SearchOptions) error {
+		options.Optimize = initOptions.Optimize
+		options.LatencyLimit = initOptions.LatencyLimit
+		options.NetworkLimit = initOptions.NetworkLimit
+		options.LoadLimit = initOptions.LoadLimit
+		options.F = initOptions.F
+		options.ReadFraction = initOptions.ReadFraction
+		options.WriteFraction = initOptions.WriteFraction
+		options.TimeoutSecs = initOptions.TimeoutSecs
+		options.Resilience = initOptions.Resilience
+
+		return nil
+	}
+	return init
 }

@@ -679,7 +679,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	}
 
 	// The sum of the read and write quorums probabilities must be 1.
-	sumOfReadProbabilities, sumOfWriteProbabilities := getTotalProbabilityConstraints(optimize, readQuorumVars, writeQuorumVars)
+	sumOfReadProbabilities, sumOfWriteProbabilities := getTotalProbabilityObjectives(optimize, readQuorumVars, writeQuorumVars)
 	def.Objectives = append(def.Objectives, sumOfReadProbabilities)
 	def.Objectives = append(def.Objectives, sumOfWriteProbabilities)
 
@@ -755,8 +755,8 @@ func getOptimizationVars(quorums []ExprSet, name string, startIndex int) (quorum
 	return quorumVars, quorumToQuorumVar
 }
 
-// getTotalProbabilityConstraints returns two objectives targeting the read and write quorums: The sum of the probabilities must be 1.
-func getTotalProbabilityConstraints(optimize OptimizeType, readQuorumVars []lpVariable, writeQuorumVars []lpVariable) (readQConstraint []float64, writeQConstraint []float64) {
+// getTotalProbabilityObjectives returns two objectives targeting the read and write quorums: The sum of the probabilities must be 1.
+func getTotalProbabilityObjectives(optimize OptimizeType, readQuorumVars []lpVariable, writeQuorumVars []lpVariable) (readQConstraint []float64, writeQConstraint []float64) {
 	// read quorum constraint
 	readQConstraint = make([]float64, 0)
 	readQConstraint = append(readQConstraint, 1)
