@@ -314,7 +314,7 @@ func (s Strategy) nodeThroughput(node Node, fr float64) float64 {
 	return capacity * (fr*s.nodeToReadProbability[node] + fw*s.nodeToWriteProbability[node])
 }
 
-func initStrategyOptions(initOptions StrategyOptions) func(options *StrategyOptions) error {
+func initializeStrategyOptions(initOptions StrategyOptions) func(options *StrategyOptions) error {
 	init := func(options *StrategyOptions) error {
 		options.Optimize = initOptions.Optimize
 		options.LatencyLimit = initOptions.LatencyLimit

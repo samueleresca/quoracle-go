@@ -34,13 +34,15 @@ type SearchResult struct {
 	Strategy     Strategy
 }
 
+//Search given some nodes, and a SearchOptions instance, returns the optimal strategy and quorum system in respect of the optimization target and constraints.
 func Search(nodes []Expr, option SearchOptions) (SearchResult, error) {
-	return performQuorumSearch(nodes, initSearchOptions(option))
+	return performQuorumSearch(nodes, initializeSearchOptions(option))
 }
 
 func performQuorumSearch(nodes []Expr, opts ...func(options *SearchOptions) error) (SearchResult, error) {
 
 	sb := &SearchOptions{}
+
 	// ... (write initializations with default values)...
 	for _, op := range opts {
 		err := op(sb)
@@ -51,19 +53,21 @@ func performQuorumSearch(nodes []Expr, opts ...func(options *SearchOptions) erro
 
 	start := time.Now()
 
-	metric := func(sigma Strategy) (float64, error) {
-		if sb.Optimize == Load {
-			return sigma.Load(&sb.ReadFraction, &sb.WriteFraction)
-		} else if sb.Optimize == Network {
-			return sigma.NetworkLoad(&sb.ReadFraction, &sb.WriteFraction)
-		} else {
-			return sigma.Latency(&sb.ReadFraction, &sb.WriteFraction)
-		}
-	}
-
 	var optQS *QuorumSystem = nil
 	var optSigma *Strategy = nil
 	var optMetric *float64 = nil
+
+	getMetric := func(sigma Strategy) (float64, error) {
+		if sb.Optimize == Load {
+			return sigma.Load(&sb.ReadFraction, &sb.WriteFraction)
+		}
+
+		if sb.Optimize == Network {
+			return sigma.NetworkLoad(&sb.ReadFraction, &sb.WriteFraction)
+		}
+
+		return sigma.Latency(&sb.ReadFraction, &sb.WriteFraction)
+	}
 
 	doSearch := func(exprs chan Expr) error {
 
@@ -84,14 +88,14 @@ func performQuorumSearch(nodes []Expr, opts ...func(options *SearchOptions) erro
 				F:             sb.F,
 			}
 
-			sigma, err := qs.Strategy(initStrategyOptions(stratOpts))
+			strategy, err := qs.Strategy(initializeStrategyOptions(stratOpts))
 
 			if err != nil {
 				fmt.Printf("Strategy not found %s \n", err)
 				continue
 			}
 
-			sigmaMetric, err := metric(*sigma)
+			sigmaMetric, err := getMetric(*strategy)
 
 			if err != nil {
 				fmt.Printf("Calc strategy err %s \n", err)
@@ -100,7 +104,7 @@ func performQuorumSearch(nodes []Expr, opts ...func(options *SearchOptions) erro
 
 			if optMetric == nil || sigmaMetric < *optMetric {
 				optQS = &qs
-				optSigma = sigma
+				optSigma = strategy
 				optMetric = &sigmaMetric
 			}
 
@@ -111,7 +115,6 @@ func performQuorumSearch(nodes []Expr, opts ...func(options *SearchOptions) erro
 				fmt.Printf("Timeout hit %f \n", sb.TimeoutSecs)
 				return nil
 			}
-
 		}
 
 		return nil
@@ -137,7 +140,6 @@ func performQuorumSearch(nodes []Expr, opts ...func(options *SearchOptions) erro
 		QuorumSystem: *optQS,
 		Strategy:     *optSigma,
 	}, nil
-
 }
 
 func partitionings(xs []Expr) chan [][]Expr {
@@ -238,7 +240,7 @@ func dupFreeExprs(nodes []Expr, maxHeight int) chan Expr {
 	return chnl
 }
 
-func initSearchOptions(initOptions SearchOptions) func(options *SearchOptions) error {
+func initializeSearchOptions(initOptions SearchOptions) func(options *SearchOptions) error {
 	init := func(options *SearchOptions) error {
 		options.Optimize = initOptions.Optimize
 		options.LatencyLimit = initOptions.LatencyLimit

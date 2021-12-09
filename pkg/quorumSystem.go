@@ -122,7 +122,7 @@ func NewQuorumSystemWithWrites(writes Expr) QuorumSystem {
 // Capacity calculate and gets the capacity from the optimized Strategy.
 func (qs QuorumSystem) Capacity(strategyOptions StrategyOptions) (float64, error) {
 
-	strategy, err := qs.Strategy(initStrategyOptions(strategyOptions))
+	strategy, err := qs.Strategy(initializeStrategyOptions(strategyOptions))
 
 	if err != nil {
 		return -1, err
@@ -134,7 +134,7 @@ func (qs QuorumSystem) Capacity(strategyOptions StrategyOptions) (float64, error
 // Latency calculate and gets the latency from the optimized Strategy.
 func (qs QuorumSystem) Latency(strategyOptions StrategyOptions) (float64, error) {
 
-	strategy, err := qs.Strategy(initStrategyOptions(strategyOptions))
+	strategy, err := qs.Strategy(initializeStrategyOptions(strategyOptions))
 
 	if err != nil {
 		return -1, err
@@ -146,7 +146,7 @@ func (qs QuorumSystem) Latency(strategyOptions StrategyOptions) (float64, error)
 // Load calculate and gets the Load from the optimized Strategy.
 func (qs QuorumSystem) Load(strategyOptions StrategyOptions) (float64, error) {
 
-	strategy, err := qs.Strategy(initStrategyOptions(strategyOptions))
+	strategy, err := qs.Strategy(initializeStrategyOptions(strategyOptions))
 
 	if err != nil {
 		return -1, err
@@ -158,7 +158,7 @@ func (qs QuorumSystem) Load(strategyOptions StrategyOptions) (float64, error) {
 // NetworkLoad calculate and gets the NetworkLoad from the optimized Strategy.
 func (qs QuorumSystem) NetworkLoad(strategyOptions StrategyOptions) (float64, error) {
 
-	strategy, err := qs.Strategy(initStrategyOptions(strategyOptions))
+	strategy, err := qs.Strategy(initializeStrategyOptions(strategyOptions))
 
 	if err != nil {
 		return -1, err
