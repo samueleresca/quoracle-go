@@ -28,13 +28,31 @@ type SearchOptions struct {
 	LatencyLimit *float64
 }
 
-//SearchResult represent the result of the search of our optimal strategy.
+// initializeSearchOptions returns an initialize function for SearchOptions.
+func initializeSearchOptions(initOptions SearchOptions) func(options *SearchOptions) error {
+	init := func(options *SearchOptions) error {
+		options.Optimize = initOptions.Optimize
+		options.LatencyLimit = initOptions.LatencyLimit
+		options.NetworkLimit = initOptions.NetworkLimit
+		options.LoadLimit = initOptions.LoadLimit
+		options.F = initOptions.F
+		options.ReadFraction = initOptions.ReadFraction
+		options.WriteFraction = initOptions.WriteFraction
+		options.TimeoutSecs = initOptions.TimeoutSecs
+		options.Resilience = initOptions.Resilience
+
+		return nil
+	}
+	return init
+}
+
+// SearchResult represent the result of the search of our optimal strategy.
 type SearchResult struct {
 	QuorumSystem QuorumSystem
 	Strategy     Strategy
 }
 
-//Search given some nodes, and a SearchOptions instance, returns the optimal strategy and quorum system in respect of the optimization target and constraints.
+// Search given some nodes, and a SearchOptions instance, returns the optimal strategy and quorum system in respect of the optimization target and constraints.
 func Search(nodes []Expr, option SearchOptions) (SearchResult, error) {
 	return performQuorumSearch(nodes, initializeSearchOptions(option))
 }
@@ -142,40 +160,8 @@ func performQuorumSearch(nodes []Expr, opts ...func(options *SearchOptions) erro
 	}, nil
 }
 
-func partitionings(xs []Expr) chan [][]Expr {
-	chnl := make(chan [][]Expr)
-	if len(xs) == 0 {
-		go func() {
-			chnl <- [][]Expr{}
-			close(chnl)
-		}()
-		return chnl
-	}
-
-	x := xs[0]
-	rest := xs[1:]
-
-	go func() {
-		for partition := range partitionings(rest) {
-			newPartition := partition
-			newPartition = append([][]Expr{{x}}, newPartition...)
-
-			chnl <- newPartition
-
-			for i := 0; i < len(partition); i++ {
-				result := make([][]Expr, 0)
-				result = append(result, partition[:i]...)
-				result = append(result, append([]Expr{x}, partition[i]...))
-
-				chnl <- append(result, partition[i+1:]...)
-
-			}
-		}
-		close(chnl)
-	}()
-	return chnl
-}
-
+// dupFreeExprs returns all possible expressions over `nodes` with height at most max_height.
+//The same expression can be returned multiple times.
 func dupFreeExprs(nodes []Expr, maxHeight int) chan Expr {
 	chnl := make(chan Expr, 0)
 
@@ -240,19 +226,36 @@ func dupFreeExprs(nodes []Expr, maxHeight int) chan Expr {
 	return chnl
 }
 
-func initializeSearchOptions(initOptions SearchOptions) func(options *SearchOptions) error {
-	init := func(options *SearchOptions) error {
-		options.Optimize = initOptions.Optimize
-		options.LatencyLimit = initOptions.LatencyLimit
-		options.NetworkLimit = initOptions.NetworkLimit
-		options.LoadLimit = initOptions.LoadLimit
-		options.F = initOptions.F
-		options.ReadFraction = initOptions.ReadFraction
-		options.WriteFraction = initOptions.WriteFraction
-		options.TimeoutSecs = initOptions.TimeoutSecs
-		options.Resilience = initOptions.Resilience
-
-		return nil
+func partitionings(xs []Expr) chan [][]Expr {
+	chnl := make(chan [][]Expr)
+	if len(xs) == 0 {
+		go func() {
+			chnl <- [][]Expr{}
+			close(chnl)
+		}()
+		return chnl
 	}
-	return init
+
+	x := xs[0]
+	rest := xs[1:]
+
+	go func() {
+		for partition := range partitionings(rest) {
+			newPartition := partition
+			newPartition = append([][]Expr{{x}}, newPartition...)
+
+			chnl <- newPartition
+
+			for i := 0; i < len(partition); i++ {
+				result := make([][]Expr, 0)
+				result = append(result, partition[:i]...)
+				result = append(result, append([]Expr{x}, partition[i]...))
+
+				chnl <- append(result, partition[i+1:]...)
+
+			}
+		}
+		close(chnl)
+	}()
+	return chnl
 }

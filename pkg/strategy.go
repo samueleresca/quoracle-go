@@ -34,7 +34,7 @@ type StrategyOptions struct {
 	F uint
 }
 
-//Strategy defines a strategy related to a QuorumSystem.
+// Strategy defines a strategy related to a QuorumSystem.
 type Strategy struct {
 	Qs                     QuorumSystem
 	SigmaR                 Sigma

@@ -38,9 +38,6 @@ type lpVariable struct {
 //		1 ≤ diceB - diceC ≤ ∞ | The two dices cannot be the same.
 //  Obj:
 //		a − b < b − c -> -∞ ≤ a - 2b + c ≤ -1 | The main objective codified from the problem.
-//
-// The problem can also be represented using an lpDefinition as follows:
-
 type lpDefinition struct {
 	Vars        []float64
 	Constraints [][2]float64
