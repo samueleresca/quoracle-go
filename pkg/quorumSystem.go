@@ -502,7 +502,7 @@ func (qs QuorumSystem) writeQuorumLatency(quorum []Node) (uint, error) {
 	return qs.quorumLatency(quorum, qs.IsWriteQuorum)
 }
 
-// quorumLatency returns the maximum latency of a given quorum.
+// quorumLatency returns the minimum latency of a given quorum.
 func (qs QuorumSystem) quorumLatency(quorum []Node, isQuorum func(set ExprSet) bool) (uint, error) {
 	sortedQ := make([]Node, 0)
 
@@ -553,7 +553,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		fr += k * v
 	}
 
-	network := func(networkLimit *float64) lpDefinition {
+	buildNetworkDef := func(networkLimit *float64) lpDefinition {
 		def := newDefinitionWithVarsAndConstraints(readQuorumVars, writeQuorumVars)
 
 		objExpr := make([]float64, len(def.Vars))
@@ -580,18 +580,18 @@ func (qs QuorumSystem) loadOptimalStrategy(
 		return def
 	}
 
-	latency := func(latencyLimit *float64) (lpDefinition, error) {
+	buildLatencyDef := func(latencyLimit *float64) (lpDefinition, error) {
 		def := newDefinitionWithVarsAndConstraints(readQuorumVars, writeQuorumVars)
 
 		// building latency objs | -inf <= latency_def <= inf
-		objExpr := make([]float64, len(def.Vars))
+		obj := make([]float64, len(def.Vars))
 
 		for _, v := range readQuorumVars {
 			nodes := make([]Node, 0)
 
 			for x := range v.Quorum {
-				q := qs.GetNodeByName(x.String())
-				nodes = append(nodes, q)
+				n := qs.GetNodeByName(x.String())
+				nodes = append(nodes, n)
 			}
 
 			l, err := qs.readQuorumLatency(nodes)
@@ -600,15 +600,15 @@ func (qs QuorumSystem) loadOptimalStrategy(
 				return lpDefinition{}, fmt.Errorf("error on readQuorumLatency %s", err)
 			}
 
-			objExpr[v.Index] = fr * v.Value * float64(l)
+			obj[v.Index] = fr * v.Value * float64(l)
 		}
 
 		for _, v := range writeQuorumVars {
 			nodes := make([]Node, 0)
 
 			for x := range v.Quorum {
-				q := qs.GetNodeByName(x.String())
-				nodes = append(nodes, q)
+				n := qs.GetNodeByName(x.String())
+				nodes = append(nodes, n)
 			}
 
 			l, err := qs.writeQuorumLatency(nodes)
@@ -617,22 +617,23 @@ func (qs QuorumSystem) loadOptimalStrategy(
 				return lpDefinition{}, fmt.Errorf("error on writeQuorumLatency %s", err)
 			}
 
-			objExpr[v.Index] = (1 - fr) * v.Value * float64(l)
+			obj[v.Index] = (1 - fr) * v.Value * float64(l)
 		}
 
-		objExpr = append([]float64{ninf}, objExpr...)
+		obj = append([]float64{ninf}, obj...)
 
 		if latencyLimit == nil {
-			objExpr = append(objExpr, pinf)
+			obj = append(obj, pinf)
 		} else {
-			objExpr = append(objExpr, *latencyLimit)
+			obj = append(obj, *latencyLimit)
 		}
-		def.Objectives = append(def.Objectives, objExpr)
+
+		def.Objectives = append(def.Objectives, obj)
 
 		return def, nil
 	}
 
-	frLoad := func(loadLimit *float64, fr float64) (lpDefinition, error) {
+	buildLoadDef := func(loadLimit *float64, fr float64) (lpDefinition, error) {
 		def := newDefinitionWithVarsAndConstraints(readQuorumVars, writeQuorumVars)
 		// l def
 		def.Vars = append(def.Vars, 1.0)
@@ -668,11 +669,11 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	def := lpDefinition{}
 
 	if optimize == Load {
-		def = getLoadObjective(readFraction, loadLimit, frLoad)
+		def = getLoadObjective(readFraction, loadLimit, buildLoadDef)
 	} else if optimize == Network {
-		def = network(nil)
+		def = buildNetworkDef(nil)
 	} else if optimize == Latency {
-		def, _ = latency(nil)
+		def, _ = buildLatencyDef(nil)
 	}
 
 	// The sum of the read and write quorums probabilities must be 1.
@@ -681,7 +682,7 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	def.Objectives = append(def.Objectives, sumOfWriteProbabilities)
 
 	if loadLimit != nil {
-		defTemp := getLoadObjective(readFraction, loadLimit, frLoad)
+		defTemp := getLoadObjective(readFraction, loadLimit, buildLoadDef)
 		def.Vars = append(def.Vars, 0)
 
 		for r := 0; r < len(def.Objectives); r++ {
@@ -696,11 +697,11 @@ func (qs QuorumSystem) loadOptimalStrategy(
 	}
 
 	if networkLimit != nil {
-		def.Objectives = merge(def.Objectives, network(networkLimit).Objectives)
+		def.Objectives = merge(def.Objectives, buildNetworkDef(networkLimit).Objectives)
 	}
 
 	if latencyLimit != nil {
-		defTemp, _ := latency(latencyLimit)
+		defTemp, _ := buildLatencyDef(latencyLimit)
 		def.Objectives = merge(def.Objectives, defTemp.Objectives)
 	}
 
