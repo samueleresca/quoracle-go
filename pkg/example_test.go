@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestExample(t *testing.T) {
+func TestStrategyUseCase(t *testing.T) {
 	a, b, c, d :=
 		NewNodeWithCapacityAndLatency("a", 2, 1, 1),
 		NewNodeWithCapacityAndLatency("b", 2, 1, 2),
@@ -19,10 +19,36 @@ func TestExample(t *testing.T) {
 	strategyOptions := StrategyOptions{
 		Optimize: Load,
 		ReadFraction: QuorumDistribution{
-			values: map[Fraction]Weight{1: 1}},
+			values: DistributionValues{1: 1}},
 	}
 
 	load, _ := qs.Load(strategyOptions)
+	capacity, _ := qs.Capacity(strategyOptions)
+	networkLoad, _ := qs.NetworkLoad(strategyOptions)
+	latency, _ := qs.Latency(strategyOptions)
 
-	fmt.Println(load)
+	fmt.Println(fmt.Sprintf("Load: %f | Capacity: %f | Network load: %f | Latency: %f",
+		load, capacity, networkLoad, latency))
+}
+
+func TestSearchUseCase(t *testing.T) {
+	a, b, c, d :=
+		NewNodeWithCapacityAndLatency("a", 2, 1, 1),
+		NewNodeWithCapacityAndLatency("b", 2, 1, 2),
+		NewNodeWithCapacityAndLatency("c", 2, 1, 3),
+		NewNodeWithCapacityAndLatency("d", 2, 1, 4)
+
+	so := SearchOptions{
+		Optimize:     Load,
+		ReadFraction: QuorumDistribution{DistributionValues{0.5: 1.0}},
+	}
+
+	sr, err := Search(so, a, b, c, d)
+
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	fmt.Println(sr.Strategy.GetReadQuorum())
+	fmt.Println(sr.Strategy.GetWriteQuorum())
 }

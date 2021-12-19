@@ -13,9 +13,11 @@ type Distribution interface {
 }
 
 // DistributionValues describe a set of fraction over weight.
+// For example, DistributionValues{0.25: 1, 0.8: 2} means 25% reads one third of the time and
+// 80% reads two thirds of the time.
 type DistributionValues = map[Fraction]Weight
 
-// QuorumDistribution describes a list of DistributionValues
+// QuorumDistribution describes a list of DistributionValues.
 type QuorumDistribution struct {
 	values DistributionValues
 }

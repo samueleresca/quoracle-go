@@ -141,7 +141,8 @@ func dupFreeExprs(nodes []Expr, maxHeight int) chan Expr {
 	return chnl
 }
 
-func Search(nodes []Expr, option SearchOptions) (SearchResult, error) {
+// Search returns the optimal Strategy and QuorumSystem given some input Expr and some SearchOptions.
+func Search(option SearchOptions, nodes ...Expr) (SearchResult, error) {
 	return performQuorumSearch(nodes, initSearchOptions(option))
 }
 
