@@ -31,10 +31,10 @@ type StrategyOptions struct {
 	WriteFraction Distribution
 	// F r ∈ R is F-resilient for some integer f if despite removing
 	// any f nodes from r, r is still a read quorum
-	F int
+	F uint
 }
 
-//Strategy defines a strategy related to a QuorumSystem.
+// Strategy defines a strategy related to a QuorumSystem.
 type Strategy struct {
 	Qs                     QuorumSystem
 	SigmaR                 Sigma
@@ -314,7 +314,7 @@ func (s Strategy) nodeThroughput(node Node, fr float64) float64 {
 	return capacity * (fr*s.nodeToReadProbability[node] + fw*s.nodeToWriteProbability[node])
 }
 
-func initStrategyOptions(initOptions StrategyOptions) func(options *StrategyOptions) error {
+func initializeStrategyOptions(initOptions StrategyOptions) func(options *StrategyOptions) error {
 	init := func(options *StrategyOptions) error {
 		options.Optimize = initOptions.Optimize
 		options.LatencyLimit = initOptions.LatencyLimit

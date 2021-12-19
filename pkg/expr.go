@@ -524,7 +524,7 @@ func (e Choose) Quorums() chan ExprSet {
 	chnl := make(chan ExprSet)
 	sets := make([]ExprSet, 0)
 
-	for _, combo := range combinations(e.Es, e.K) {
+	for _, combo := range combinations(e.Es, uint(e.K)) {
 		combinedQuorums := make([][]interface{}, 0)
 		for _, c := range combo {
 			quorums := make([]interface{}, 0)
@@ -722,15 +722,15 @@ func product(sets ...[]interface{}) [][]interface{} {
 }
 
 //combinations returns n combinations given a list of input Expr
-func combinations(set []Expr, n int) (subsets [][]Expr) {
+func combinations(set []Expr, n uint) (subsets [][]Expr) {
 	length := len(set)
 
-	if n > len(set) {
-		n = len(set)
+	if n > uint(len(set)) {
+		n = uint(len(set))
 	}
 
 	for subsetBits := 1; subsetBits < (1 << length); subsetBits++ {
-		if n > 0 && bits.OnesCount(uint(subsetBits)) != n {
+		if n > 0 && bits.OnesCount(uint(subsetBits)) != int(n) {
 			continue
 		}
 
