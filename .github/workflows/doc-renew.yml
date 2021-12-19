@@ -1,5 +1,6 @@
+name: doc-renew
 on:
-  release:
+  push:
     tags:
       - v*
 
